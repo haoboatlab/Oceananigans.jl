@@ -179,8 +179,8 @@ end
     return ifelse(N² == 0, zero(FT), N² / (∂z_u² + ∂z_v²))
 end
 
-@inline step(x, c, w) = (1 + tanh(x / w - c)) / 2
-@inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ * (1 + rσ * step(Ri, c, w))
+@inline step(x, c, w) = 1 + tanh((x - c) / w)
+@inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ + rσ * step(Ri, c, w)
 
 @inline function momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
