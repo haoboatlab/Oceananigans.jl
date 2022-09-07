@@ -116,16 +116,30 @@ struct FluxTapering{FT}
 end
 
 """
-    taper_factor(i, j, k, grid, closure, tracers, buoyancy) 
+    tapering_factor(i, j, k, grid, closure, tracers, buoyancy) 
 
-Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
-that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the
-faces involved in the isopycnal slope tensor calculation. The minimum value of tapering is selected.
+Return the tapering factor for tracer cell `i, j, k`.
 
-References
-==========
-R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
-    on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
+A tapering factor `ϵ` is calculated on the west, south, and bottom facets of the tracer cell,
+which are located at `ᶠᶜᶜ`, `ᶜᶠᶜ`, and `ᶜᶜᶠ`, repectively. Each tapering factor is computed with
+
+```math
+ϵᵃᵃᵃ = min(1, Sₘₐₓ² / slope²)
+```
+
+where `slope² = slope_x² + slope_y²`, `slope_x = - bx / bz`, `slope_y = - by / bz`, and `Sₘₐₓ` is
+a parameter of `closure.slope_limiter`.
+
+We then return `min(ϵᶠᶜᶜ, ϵᶜᶠᶜ, ϵᶜᶜᶠ)`.
+
+This is _similar_ (but not identical) to the tapering algorithm used in MITgcm and described
+here: https://mitgcm.readthedocs.io/en/latest/phys_pkgs/gmredi.html#tapering-gerdes-koberle-and-willebrand-1991-gkw91
+
+Note that tapering is _also_ proposed by Gerdes et al., "The influence of numerical
+advection schemes on the results of ocean general circulation models",
+Clim. Dynamics, 5 (4), 211–226, 1991. However, the scheme used here differes from that described in 
+appendix 2 of Gerdes et al. (1991).
+
 """
 @inline function tapering_factor(i, j, k, grid, closure, tracers, buoyancy)
 
@@ -136,45 +150,36 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
     return min(ϵᶠᶜᶜ, ϵᶜᶠᶜ, ϵᶜᶜᶠ)
 end
 
-@inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    
-    by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
-    bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
-
-    bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
-
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-end
-
-@inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
-
-    bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
-    bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
-
-    by = ∂y_b(i, j, k,   grid, buoyancy, tracers)
-
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-end
-
-@inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-
-    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
-    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
-
-    bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
-
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-end
-
-@inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter)
-    
+@inline function tapering_factorᵃᵃᵃ(bx, by, bz, slope_model, slope_limiter)
+    # Limit vertical buoyancy gradient
     bz = max(bz, slope_model.minimum_bz)
     
     slope_x = - bx / bz
     slope_y = - by / bz
-    slope² = ifelse(bz < 0, zero(grid), slope_x^2 + slope_y^2)
+    slope² = ifelse(bz < 0, zero(bz), slope_x^2 + slope_y^2)
 
-    return min(one(grid), slope_limiter.max_slope^2 / slope²)
+    return min(one(bz), slope_limiter.max_slope^2 / slope²)
+end
+
+@inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
+    by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
+    bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
+    return tapering_factorᵃᵃᵃ(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
+end
+
+@inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
+    bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
+    by = ∂y_b(i, j, k,   grid, buoyancy, tracers)
+    return tapering_factorᵃᵃᵃ(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
+end
+
+@inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
+    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    return tapering_factorᵃᵃᵃ(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 # Diffusive fluxes
