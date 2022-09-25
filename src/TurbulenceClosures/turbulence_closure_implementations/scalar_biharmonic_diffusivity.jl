@@ -68,10 +68,99 @@ function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F}) where {F
     return ScalarBiharmonicDiffusivity{F}(closure.ν, κ)
 end
 
+const VSB  = ScalarBiharmonicDiffusivity{<:Any, <:DiscreteDiffusionFunction}
+const DSB  = ScalarBiharmonicDiffusivity{<:Any, <:Any, <:DiscreteDiffusionFunction}
+const DVSB = ScalarBiharmonicDiffusivity{<:Any, <:DiscreteDiffusionFunction, <:DiscreteDiffusionFunction}
+
+function Diffusivityfields(grid, tracer_names, bcs, ::VSB)   
+    default_eddy_viscosity_bcs = (; ν = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    bcs = merge(default_eddy_viscosity_bcs, bcs)
+    return (; ν=CenterField(grid, boundary_conditions=bcs.ν))
+end
+
+function Diffusivityfields(grid, tracer_names, bcs, ::DSB) 
+    default_eddy_viscosity_bcs = (; κ = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    bcs = merge(default_eddy_viscosity_bcs, bcs)
+    return (; κ=CenterField(grid, boundary_conditions=bcs.κ))
+end
+
+function Diffusivityfields(grid, tracer_names, bcs, ::DVSB) 
+    default_eddy_viscosity_bcs = (; ν = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    bcs = merge(default_eddy_viscosity_bcs, bcs)
+    ν=CenterField(grid, boundary_conditions=bcs.ν)
+    return (; ν, κ = deepcopy(ν))
+end
+
 @inline viscosity(closure::ScalarBiharmonicDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarBiharmonicDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
+@inline viscosity(::Union{VSB, DVSB}, K) = K.ν
+@inline diffusivity(::Union{DSB, DVSB}, K, ::Val{id}) where id = K.κ[id]
+
 calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
+
+@inline calc_νᶜᶜᶜ(i, j, k, grid, closure::Union{VSB, DVSB}, buoyancy, U, C) =
+        getdiffusivity(closure.ν, i, j, k, grid, (c, c, c), nothing, merge(U, C))
+
+@inline calc_κᶜᶜᶜ(i, j, k, grid, closure::Union{DSB, DVSB}, buoyancy, U, C) =
+    getdiffusivity(closure.κ, i, j, k, grid, (c, c, c), nothing, merge(U, C))
+
+
+function calculate_diffusivities!(diffusivities, closure::VSB, args...) 
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_nonlinear_viscosity!,
+                    diffusivity_fields.ν, grid, closure, buoyancy, velocities, tracers,
+                    dependencies = device_event(arch))
+
+    wait(device(arch), event)
+
+    return nothing
+end
+
+function calculate_diffusivities!(diffusivities, closure::DSB, args...) 
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_nonlinear_diffusivity!,
+                    diffusivity_fields.κ, grid, closure, buoyancy, velocities, tracers,
+                    dependencies = device_event(arch))
+
+    wait(device(arch), event)
+
+    return nothing
+end
+
+function calculate_diffusivities!(diffusivities, closure::DVSB, args...) 
+
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+
+    ν_event = launch!(arch, grid, :xyz,
+                    calculate_nonlinear_viscosity!,
+                    diffusivity_fields.ν, grid, closure, buoyancy, velocities, tracers,
+                    dependencies = device_event(arch))
+    κ_event = launch!(arch, grid, :xyz,
+                    calculate_nonlinear_diffusivity!,
+                    diffusivity_fields.κ, grid, closure, buoyancy, velocities, tracers,
+                    dependencies = device_event(arch))
+
+    wait(device(arch), MultiEvent((ν_event, κ_event)))
+
+    return nothing
+end
 
 function Base.summary(closure::ScalarBiharmonicDiffusivity)
     F = summary(formulation(closure))
