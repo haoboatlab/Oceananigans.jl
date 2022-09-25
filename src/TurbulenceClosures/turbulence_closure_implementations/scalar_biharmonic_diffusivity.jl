@@ -1,5 +1,6 @@
 import Oceananigans.Grids: required_halo_size
 using Oceananigans.Utils: prettysummary
+using Oceananigans: fields
 
 """
     struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivity{F}
@@ -79,16 +80,28 @@ function Diffusivityfields(grid, tracer_names, bcs, ::VSB)
 end
 
 function Diffusivityfields(grid, tracer_names, bcs, ::DSB) 
-    default_eddy_viscosity_bcs = (; κ = FieldBoundaryConditions(grid, (Center, Center, Center)))
-    bcs = merge(default_eddy_viscosity_bcs, bcs)
-    return (; κ=CenterField(grid, boundary_conditions=bcs.κ))
+    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
+    κₑ_bcs = :κₑ ∈ keys(user_bcs) ? merge(default_κₑ_bcs, user_bcs.κₑ) : default_κₑ_bcs
+
+    bcs = merge((; νₑ = default_diffusivity_bcs, κₑ = κₑ_bcs), user_bcs)
+
+    κₑ = NamedTuple(c => CenterField(grid, boundary_conditions=bcs.κₑ[c]) for c in tracer_names)
+
+    return (; κ = κₑ)
 end
 
 function Diffusivityfields(grid, tracer_names, bcs, ::DVSB) 
-    default_eddy_viscosity_bcs = (; ν = FieldBoundaryConditions(grid, (Center, Center, Center)))
-    bcs = merge(default_eddy_viscosity_bcs, bcs)
-    ν=CenterField(grid, boundary_conditions=bcs.ν)
-    return (; ν, κ = deepcopy(ν))
+    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
+    κₑ_bcs = :κₑ ∈ keys(user_bcs) ? merge(default_κₑ_bcs, user_bcs.κₑ) : default_κₑ_bcs
+
+    bcs = merge((; νₑ = default_diffusivity_bcs, κₑ = κₑ_bcs), user_bcs)
+
+    νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
+    κₑ = NamedTuple(c => CenterField(grid, boundary_conditions=bcs.κₑ[c]) for c in tracer_names)
+
+    return (; ν = νₑ, κ = κₑ)
 end
 
 @inline viscosity(closure::ScalarBiharmonicDiffusivity, K) = closure.ν
@@ -99,23 +112,20 @@ end
 
 calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 
-@inline calc_νᶜᶜᶜ(i, j, k, grid, closure::Union{VSB, DVSB}, buoyancy, U, C) =
-        getdiffusivity(closure.ν, i, j, k, grid, (c, c, c), nothing, merge(U, C))
+@inline calc_νᶜᶜᶜ(i, j, k, grid, closure::Union{VSB, DVSB}, clock, fields, buoyancy) =
+    getdiffusivity(closure.ν, i, j, k, grid, (c, c, c), clock, fields)
 
-@inline calc_κᶜᶜᶜ(i, j, k, grid, closure::Union{DSB, DVSB}, buoyancy, U, C) =
-    getdiffusivity(closure.κ, i, j, k, grid, (c, c, c), nothing, merge(U, C))
+@inline calc_κᶜᶜᶜ(i, j, k, grid, closure::Union{DSB, DVSB}, clock, fields, buoyancy, tracer_index) =
+    getdiffusivity(closure.κ, i, j, k, grid, (c, c, c), clock, fields)
 
-
-function calculate_diffusivities!(diffusivities, closure::VSB, args...) 
+function calculate_diffusivities!(diffusivity_fields, closure::VSB, args...) 
     arch = model.architecture
     grid = model.grid
-    velocities = model.velocities
-    tracers = model.tracers
     buoyancy = model.buoyancy
 
     event = launch!(arch, grid, :xyz,
                     calculate_nonlinear_viscosity!,
-                    diffusivity_fields.ν, grid, closure, buoyancy, velocities, tracers,
+                    diffusivity_fields.ν, grid, closure, model.clock, fields(model), buoyancy,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
@@ -123,17 +133,19 @@ function calculate_diffusivities!(diffusivities, closure::VSB, args...)
     return nothing
 end
 
-function calculate_diffusivities!(diffusivities, closure::DSB, args...) 
+function calculate_diffusivities!(diffusivity_fields, closure::DSB, args...) 
     arch = model.architecture
     grid = model.grid
-    velocities = model.velocities
-    tracers = model.tracers
     buoyancy = model.buoyancy
 
-    event = launch!(arch, grid, :xyz,
-                    calculate_nonlinear_diffusivity!,
-                    diffusivity_fields.κ, grid, closure, buoyancy, velocities, tracers,
-                    dependencies = device_event(arch))
+    workgroup, worksize = work_layout(grid, :xyz)
+    diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
+
+    for (tracer_index, κ) in enumerate(diffusivity_fields.κ)
+        @inbounds c = tracers[tracer_index]
+        event = diffusivity_kernel!(κ, grid, closure, model.clock, fields(model), buoyancy, Val(tracer_index), dependencies=barrier)
+        push!(events, event)
+    end
 
     wait(device(arch), event)
 
@@ -144,20 +156,24 @@ function calculate_diffusivities!(diffusivities, closure::DVSB, args...)
 
     arch = model.architecture
     grid = model.grid
-    velocities = model.velocities
-    tracers = model.tracers
     buoyancy = model.buoyancy
 
-    ν_event = launch!(arch, grid, :xyz,
-                    calculate_nonlinear_viscosity!,
-                    diffusivity_fields.ν, grid, closure, buoyancy, velocities, tracers,
-                    dependencies = device_event(arch))
-    κ_event = launch!(arch, grid, :xyz,
-                    calculate_nonlinear_diffusivity!,
-                    diffusivity_fields.κ, grid, closure, buoyancy, velocities, tracers,
-                    dependencies = device_event(arch))
+    workgroup, worksize = work_layout(grid, :xyz)
+    viscosity_kernel!   = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
+    diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
 
-    wait(device(arch), MultiEvent((ν_event, κ_event)))
+    barrier = device_event(arch)
+    viscosity_event = viscosity_kernel!(diffusivity_fields.ν, grid, closure, model.clock, fields(model), buoyancy, dependencies=barrier)
+
+    events = [viscosity_event]
+
+    for (tracer_index, κ) in enumerate(diffusivity_fields.κ)
+        @inbounds c = tracers[tracer_index]
+        event = diffusivity_kernel!(κₑ, grid, closure, model.clock, fields(model), buoyancy, Val(tracer_index), dependencies=barrier)
+        push!(events, event)
+    end
+
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
