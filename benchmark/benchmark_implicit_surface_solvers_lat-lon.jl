@@ -46,7 +46,7 @@ for N in 10:10:250
     horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
     diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
-                                                ν = νz, κ = κz)
+                                                  ν = νz, κ = κz)
 
     implicit_free_surface_solvers = (#:FastFourierTransform,
                                      #:PreconditionedConjugateGradient,
@@ -83,17 +83,17 @@ for N in 10:10:250
                                             tracer_advection = WENO(vector_invariant = VelocityStencil()))
 
         # Initial condition: a baroclinically unstable situation!
-        ramp(y, δy) = min(max(0, y/δy + 1/2), 1)
+        ramp(φ, δφ) = min(max(0, φ/δφ + 1/2), 1)
 
         # Parameters
         N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
         M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-        δy = 0.5 # degrees
+        δφ = 0.5 # degrees
         δb = δy * M²
         ϵb = 1e-2 * δb # noise amplitude
 
-        bᵢ(x, y, z) = N² * z + δb * ramp(y, δy) + ϵb * randn()
+        bᵢ(λ, φ, z) = N² * z + δb * ramp(φ, δφ) + ϵb * randn()
 
         set!(model, b=bᵢ)
 
