@@ -1,5 +1,8 @@
 using Oceananigans.Grids: size, halo_size
 
+function calculate_tendency_contributions! end
+function calculate_boundary_tendency_contributions! end
+
 """
 calculate_tendencies!(model::NonhydrostaticModel)
 
