@@ -22,7 +22,7 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
     if validate_kernel_size(N, H) # Split communication and computation for large 3D simulations (for which N > 2H in every direction)
         interior_events = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
     
-        wait(device(arch), MultiEvent(Tuple(fill_halo_events)))
+        wait(device(arch), MultiEvent(tuple(fill_halo_events...)))
     
         boundary_events = []
         dependencies    = fill_halo_events[end]

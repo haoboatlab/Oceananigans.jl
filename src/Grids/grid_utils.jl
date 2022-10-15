@@ -101,11 +101,8 @@ end
 
 Return a tuple with the size of the halo in each dimension.
 """
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
-
-halo_size(grid, 1) = halo_size(grid)[1]
-halo_size(grid, 2) = halo_size(grid)[2]
-halo_size(grid, 3) = halo_size(grid)[3]
+halo_size(grid)    = (grid.Hx, grid.Hy, grid.Hz)
+halo_size(grid, d) = halo_size(grid)[d]
 
 """
     total_extent(topology, H, Δ, L)
