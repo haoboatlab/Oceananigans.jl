@@ -31,11 +31,11 @@ function calculate_tendencies!(model, fill_halo_events = NoneEvent())
 
         wait(device(arch), MultiEvent(tuple(interior_events..., boundary_events...)))
     else # For 2D computations, of domains that have (N < 2H) in at least one direction, launching 1 kernel is enough
-        wait(device(arch), MultiEvent(Tuple(fill_halo_events)))
+        wait(device(arch), MultiEvent(tuple(fill_halo_events)))
 
         interior_events = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
 
-        wait(device(arch), MultiEvent(Tuple(interior_events)))
+        wait(device(arch), MultiEvent(tuple(interior_events)))
     end
 
 
