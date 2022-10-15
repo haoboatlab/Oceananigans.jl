@@ -6,7 +6,7 @@ calculate_tendencies!(model::NonhydrostaticModel)
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model, fill_halo_events)
+function calculate_tendencies!(model, fill_halo_events = NoneEvent())
 
     arch = model.architecture
 
@@ -46,7 +46,7 @@ function calculate_tendencies!(model, fill_halo_events)
     return nothing
 end
 
-@inline validate_kernel_size(N, H) = false #all(N .- 2 .* H .> 0)
+@inline validate_kernel_size(N, H) = all(N .- 2 .* H .> 0)
 
 @inline function tendency_kernel_size(grid, ::Val{:interior}) 
     N = size(grid)

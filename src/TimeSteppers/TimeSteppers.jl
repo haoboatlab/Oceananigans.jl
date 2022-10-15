@@ -9,6 +9,7 @@ export
 
 using CUDA
 using KernelAbstractions
+using KernelAbstractions: MultiEvent, NoneEvent
 using Oceananigans: AbstractModel, prognostic_fields
 using Oceananigans.Architectures: device
 using Oceananigans.Fields: TendencyFields
