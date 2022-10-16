@@ -19,11 +19,9 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
     N = size(model.grid)
     H = halo_size(model.grid)
 
-    if validate_kernel_size(N, H) # Split communication and computation for large 3D simulations (for which N > 2H in every direction)
+    if validate_kernel_size(N, H) # Split communication and computation for large 3D simulations (for which N > 2H in every direction) # && !(fill_halo_events isa NoneEvent)
         interior_events = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
-    
-        wait(device(arch), MultiEvent(tuple(fill_halo_events...)))
-    
+        
         boundary_events = []
         dependencies    = fill_halo_events[end]
 
@@ -32,15 +30,14 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
             push!(boundary_events, calculate_tendency_contributions!(model, region; dependencies)...)
         end
 
-        wait(device(arch), MultiEvent(tuple(interior_events..., boundary_events...)))
-    else # For 2D computations, of domains that have (N < 2H) in at least one direction, launching 1 kernel is enough
+        wait(device(arch), MultiEvent(tuple(fill_halo_events..., interior_events..., boundary_events...)))
+    else # For 2D computations, not communicating simulations, or domains that have (N < 2H) in at least one direction, launching 1 kernel is enough
         wait(device(arch), MultiEvent(tuple(fill_halo_events...)))
 
-        interior_events = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
+        interior_events = calculate_tendency_contributions!(model, :allfield; dependencies = device_event(arch))
 
         wait(device(arch), MultiEvent(tuple(interior_events...)))
     end
-
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -51,11 +48,11 @@ end
 
 @inline validate_kernel_size(N, H) = all(N .- 2 .* H .> 0)
 
-@inline function tendency_kernel_size(grid, ::Val{:interior}) 
-    N = size(grid)
-    H = halo_size(grid)
-    return ifelse(validate_kernel_size(N, H), N .- 2 .* H, N)
-end
+@inline tendency_kernel_size(grid, ::Val{:allfield}) = size(grid) 
+@inline tendency_kernel_size(grid, ::Val{:interior}) = size(grid) .- 2 .* halo_size(grid)
+
+@inline tendency_kernel_offset(grid, ::Val{:allfield}) = (0, 0, 0)
+@inline tendency_kernel_offset(grid, ::Val{:interior}) = halo_size(grid)
 
 ## The corners and vertical edges are calculated in the x direction
 ## The horizontal edges in the y direction
@@ -68,15 +65,35 @@ end
 @inline tendency_kernel_size(grid, ::Val{:north})  = tendency_kernel_size(grid, Val(:south))
 @inline tendency_kernel_size(grid, ::Val{:top})    = tendency_kernel_size(grid, Val(:bottom))
 
-@inline function tendency_kernel_offset(grid, ::Val{:interior}) 
-    N = size(grid)
-    H = halo_size(grid)
-    return ifelse(validate_kernel_size(N, H), H, (0, 0, 0))
-end
-
 @inline tendency_kernel_offset(grid, ::Val{:west})   = (0, 0, 0)
 @inline tendency_kernel_offset(grid, ::Val{:east})   = (size(grid, 1) - halo_size(grid, 1), 0, 0)
 @inline tendency_kernel_offset(grid, ::Val{:south})  = (halo_size(grid, 1), 0, 0)
 @inline tendency_kernel_offset(grid, ::Val{:north})  = (halo_size(grid, 1), size(grid, 2) - halo_size(grid, 2), 0)
 @inline tendency_kernel_offset(grid, ::Val{:bottom}) = (halo_size(grid, 1), halo_size(grid, 2), 0)
 @inline tendency_kernel_offset(grid, ::Val{:top})    = (halo_size(grid, 1), halo_size(grid, 2), size(grid, 3) - halo_size(grid, 3))
+
+## Auxiliary fields (such as velocity) do not fill halo but calculate values on the boundaries directly
+@inline add2(H) = ifelse(H > 0,  2, 0)
+@inline add1(H) = ifelse(H > 0,  1, 0)
+@inline min1(H) = ifelse(H > 0, -1, 0)
+
+@inline tendency_kernel_size_aux(grid, ::Val{:allfield}) = size(grid) .+ add2.(halo_size(grid))
+@inline tendency_kernel_size_aux(grid, ::Val{:interior}) = size(grid) .- 2 .* halo_size(grid)
+
+@inline tendency_kernel_offset_aux(grid, ::Val{:allfield}) = min1.(halo_size(grid))
+@inline tendency_kernel_offset_aux(grid, ::Val{:interior}) = halo_size(grid)
+
+@inline tendency_kernel_size_aux(grid, ::Val{:west})   = @inbounds (halo_size(grid, 1)+add1(halo_size(grid, 1)), size(grid, 2)+add2(halo_size(grid, 2)),      size(grid, 3)+add2(halo_size(grid, 3)))
+@inline tendency_kernel_size_aux(grid, ::Val{:south})  = @inbounds (size(grid, 1)-2*halo_size(grid, 1),          halo_size(grid, 2)+add1(halo_size(grid, 2)), size(grid, 3)+add2(halo_size(grid, 3)))
+@inline tendency_kernel_size_aux(grid, ::Val{:bottom}) = @inbounds (size(grid, 1)-2*halo_size(grid, 1),          size(grid, 2) - 2*halo_size(grid, 2),        halo_size(grid, 3)+add1(halo_size(grid, 1)))
+
+@inline tendency_kernel_size_aux(grid, ::Val{:east})   = tendency_kernel_size(grid, Val(:west))
+@inline tendency_kernel_size_aux(grid, ::Val{:north})  = tendency_kernel_size(grid, Val(:south))
+@inline tendency_kernel_size_aux(grid, ::Val{:top})    = tendency_kernel_size(grid, Val(:bottom))
+
+@inline tendency_kernel_offset_aux(grid, ::Val{:west})   = @inbounds min1.(halo_size(grid))
+@inline tendency_kernel_offset_aux(grid, ::Val{:east})   = @inbounds (size(grid, 1)-halo_size(grid, 1), min1.(halo_size(grid)[[2, 3]]))
+@inline tendency_kernel_offset_aux(grid, ::Val{:south})  = @inbounds (halo_size(grid, 1),               min1.(halo_size(grid)[[2, 3]]))
+@inline tendency_kernel_offset_aux(grid, ::Val{:north})  = @inbounds (halo_size(grid, 1),               size(grid, 2)-halo_size(grid, 2), min1(halo_size(grid, 3)))
+@inline tendency_kernel_offset_aux(grid, ::Val{:bottom}) = @inbounds (halo_size(grid, 1),               halo_size(grid, 2),               min1(halo_size(grid, 3)))
+@inline tendency_kernel_offset_aux(grid, ::Val{:top})    = @inbounds (halo_size(grid, 1),               halo_size(grid, 2),               size(grid, 3)-halo_size(grid, 3))
