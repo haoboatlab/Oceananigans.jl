@@ -97,8 +97,8 @@ end
 @inline tendency_kernel_size_aux(grid, ::Val{:top})    = tendency_kernel_size(grid, Val(:bottom))
 
 @inline tendency_kernel_offset_aux(grid, ::Val{:west})   = @inbounds min1.(halo_size(grid))
-@inline tendency_kernel_offset_aux(grid, ::Val{:east})   = @inbounds (size(grid, 1)-halo_size(grid, 1), min1.(halo_size(grid)[[2, 3]]))
-@inline tendency_kernel_offset_aux(grid, ::Val{:south})  = @inbounds (halo_size(grid, 1),               min1.(halo_size(grid)[[2, 3]]))
+@inline tendency_kernel_offset_aux(grid, ::Val{:east})   = @inbounds (size(grid, 1)-halo_size(grid, 1), min1.(halo_size(grid)[[2, 3]])...)
+@inline tendency_kernel_offset_aux(grid, ::Val{:south})  = @inbounds (halo_size(grid, 1),               min1.(halo_size(grid)[[2, 3]])...)
 @inline tendency_kernel_offset_aux(grid, ::Val{:north})  = @inbounds (halo_size(grid, 1),               size(grid, 2)-halo_size(grid, 2), min1(halo_size(grid, 3)))
 @inline tendency_kernel_offset_aux(grid, ::Val{:bottom}) = @inbounds (halo_size(grid, 1),               halo_size(grid, 2),               min1(halo_size(grid, 3)))
 @inline tendency_kernel_offset_aux(grid, ::Val{:top})    = @inbounds (halo_size(grid, 1),               halo_size(grid, 2),               size(grid, 3)-halo_size(grid, 3))
