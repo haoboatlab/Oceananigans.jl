@@ -250,6 +250,7 @@ end
 #####
 
 import Oceananigans.TimeSteppers: validate_kernel_splitting, tendency_kernel_size, tendency_kernel_size_aux
+using Oceananigans.TimeSteppers: add2
 
 @inline validate_kernel_splitting(grid::ConformalCubedSphereGrid) = false
 @inline tendency_kernel_size(grid::ConformalCubedSphereGrid, ::Val{:allfield}) = (size(grid, 1), size(grid, 2), size(grid, 3))
