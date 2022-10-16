@@ -140,7 +140,7 @@ end
 ##### Don't splite kernels for the cubed sphere!
 #####
 
-import Oceanananigans.TimeStepper: validate_kernel_splitting
+import Oceananigans.TimeStepper: validate_kernel_splitting
 
 @inline validate_kernel_splitting(grid::ConformalCubedSphereFaceGrid) = false
 
