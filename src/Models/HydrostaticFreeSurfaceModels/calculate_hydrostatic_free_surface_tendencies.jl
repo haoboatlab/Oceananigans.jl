@@ -58,8 +58,8 @@ function calculate_tendency_contributions!(model::HydrostaticFreeSurfaceModel, r
     return Tuple(events)
 end
 
-calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:top})    = NoneEvent()
-calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:bottom}) = NoneEvent()
+calculate_free_surface_tendency!(grid, model, ::Val{:top}; kwargs...)    = NoneEvent()
+calculate_free_surface_tendency!(grid, model, ::Val{:bottom}; kwargs...) = NoneEvent()
 
 function calculate_free_surface_tendency!(grid, model, ::Val{region}; dependencies) where region
 
