@@ -63,7 +63,8 @@ function random_divergence_free_source_term(grid)
     fill_halo_regions!(Rv, nothing, nothing)
     fill_halo_regions!(Rw, nothing, nothing)
 
-    event = launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid,
+    offsets = (0, 0)
+    event = launch!(arch, grid, :xy, _compute_w_from_continuity!, U, offsets, grid,
                     dependencies=Event(device(arch)))
     wait(device(arch), event)
 

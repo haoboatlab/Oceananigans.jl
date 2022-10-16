@@ -15,7 +15,7 @@ function compute_w_from_continuity!(velocities, arch, grid; region_to_compute, d
     
     kernel_size   = tendency_kernel_size_aux(grid, Val(region_to_compute))[[1, 2]]
     kernel_offset = tendency_kernel_offset_aux(grid, Val(region_to_compute))[[1, 2]]
-    @show kernel_size, kernel_offset, region_to_compute
+
     event = launch!(arch, grid, kernel_size, _compute_w_from_continuity!, velocities, kernel_offset, grid; dependencies)
 
     return event

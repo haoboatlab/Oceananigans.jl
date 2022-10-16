@@ -249,9 +249,10 @@ end
 ##### Don't splite kernels for the cubed sphere!
 #####
 
-import Oceananigans.TimeSteppers: validate_kernel_splitting
+import Oceananigans.TimeSteppers: validate_kernel_splitting, tendency_kernel_size
 
 @inline validate_kernel_splitting(grid::ConformalCubedSphereGrid) = false
+@inline tendency_kernel_size(grid::ConformalCubedSphereGrid, ::Val{:allfield}) = (size(grid, 1), size(grid, 2), size(grid, 3))
 
 #####
 ##### filling grid halos

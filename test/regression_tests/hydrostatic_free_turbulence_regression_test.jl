@@ -1,13 +1,17 @@
 using JLD2
 
+using Oceananigans.Grids: architecture
 using Oceananigans.Fields: FunctionField
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, fᶠᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 using Oceananigans.TurbulenceClosures
+using Oceananigans.Models.HydrostaticFreeSurfaceModel: compute_w_velocity!
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
+
+    arch = architecture(grid)
 
     #####
     ##### Constructing Grid and model
@@ -84,6 +88,10 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
     # Let's gooooooo!
     run!(simulation)
+
+    # Update w velocity
+    w_event = compute_w_from_continuity!(model.velocities, arch, grid; :allfield)
+    wait(device(arch), w_event)
 
     # Test results
     test_fields = (
