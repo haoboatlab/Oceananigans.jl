@@ -120,7 +120,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_si
                        calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, offsets, v_kernel_args...;
                        dependencies = dependencies)
 
-    events = [Gu_event, Gv_event]
+    events = Any[Gu_event, Gv_event]
 
     return events
 end
