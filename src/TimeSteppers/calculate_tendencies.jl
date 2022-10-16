@@ -1,7 +1,7 @@
 using Oceananigans.Grids: size, halo_size, topology, Flat
 
-function calculate_tendency_contributions! end
-function calculate_boundary_tendency_contributions! end
+calculate_tendency_contributions!(model, region; kwargs...) = nothing
+calculate_boundary_tendency_contributions!(model)           = nothing
 
 """
 calculate_tendencies!(model::NonhydrostaticModel)
@@ -46,7 +46,7 @@ end
 
     N = size(grid)
     H = halo_size(grid)
-    
+
     grid_is_3D        = all(topology(grid) .!= Flat)
     grid_large_enough = all(N .- 2 .* H .> 0) 
 
