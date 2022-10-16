@@ -94,15 +94,13 @@ function Base.size(loc, grid::AbstractGrid, indices::Tuple)
     return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
 end
 
-
-
 """
     halo_size(grid)
 
 Return a tuple with the size of the halo in each dimension.
 """
-halo_size(grid)    = (grid.Hx, grid.Hy, grid.Hz)
-halo_size(grid, d) = halo_size(grid)[d]
+@inline halo_size(grid)    = (grid.Hx, grid.Hy, grid.Hz)
+@inline halo_size(grid, d) = @inbounds halo_size(grid)[d]
 
 """
     total_extent(topology, H, Δ, L)
