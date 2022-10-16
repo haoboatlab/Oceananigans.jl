@@ -246,6 +246,14 @@ function on_architecture(arch, grid::ConformalCubedSphereGrid)
 end
 
 #####
+##### Don't splite kernels for the cubed sphere!
+#####
+
+import Oceananigans.TimeSteppers: validate_kernel_splitting
+
+@inline validate_kernel_splitting(grid::ConformalCubedSphereGrid) = false
+
+#####
 ##### filling grid halos
 #####
 

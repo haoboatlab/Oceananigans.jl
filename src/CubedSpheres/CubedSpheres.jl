@@ -137,14 +137,6 @@ import Oceananigans.Forcings: ContinuousForcing
 end
 
 #####
-##### Don't splite kernels for the cubed sphere!
-#####
-
-import Oceananigans.TimeSteppers: validate_kernel_splitting
-
-@inline validate_kernel_splitting(grid::ConformalCubedSphereFaceGrid) = false
-
-#####
 ##### NaN checker for cubed sphere fields
 #####
 
