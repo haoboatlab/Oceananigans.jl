@@ -7,7 +7,7 @@ using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, fᶠᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Models.HydrostaticFreeSurfaceModel: compute_w_velocity!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_velocity!
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
