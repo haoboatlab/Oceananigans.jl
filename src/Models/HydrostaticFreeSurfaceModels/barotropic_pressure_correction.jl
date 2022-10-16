@@ -10,6 +10,7 @@ const HFSM = HydrostaticFreeSurfaceModel
 const ExplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSurface}
 const ImplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
 const SplitExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface}
+const NoFreeSurfaceHSFM            = HFSM{<:Any, <:Any, <:Any, <:Nothing}
 
 pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = nothing
 
@@ -34,11 +35,12 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
     return nothing
 end
 
-calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, ::Val{region};  kwargs...) where region = NoneEvent()
-calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, ::Val{:top};    kwargs...) = NoneEvent()
-calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, ::Val{:bottom}; kwargs...) = NoneEvent()
+const NoFreeSurfaceTendency = Union{ImplicitFreeSurfaceHFSM, NoFreeSurfaceHSFM}
+calculate_free_surface_tendency!(grid, model::NoFreeSurfaceTendency, ::Val{region};  kwargs...) where region = NoneEvent()
+calculate_free_surface_tendency!(grid, model::NoFreeSurfaceTendency, ::Val{:top};    kwargs...) = NoneEvent()
+calculate_free_surface_tendency!(grid, model::NoFreeSurfaceTendency, ::Val{:bottom}; kwargs...) = NoneEvent()
 
-function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
+function pressure_correct_velocities!(grid, model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
     u, v, _ = model.velocities
     grid = model.grid 
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
