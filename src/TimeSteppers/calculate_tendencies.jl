@@ -1,4 +1,4 @@
-using Oceananigans.Grids: size, halo_size
+using Oceananigans.Grids: size, halo_size, topology, Flat
 
 function calculate_tendency_contributions! end
 function calculate_boundary_tendency_contributions! end
@@ -15,11 +15,7 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-
-    N = size(model.grid)
-    H = halo_size(model.grid)
-
-    if validate_kernel_size(N, H) # Split communication and computation for large 3D simulations (for which N > 2H in every direction) # && !(fill_halo_events isa NoneEvent)
+    if validate_kernel_splitting(model.grid) # Split communication and computation for large 3D simulations (for which N > 2H in every direction) # && !(fill_halo_events isa NoneEvent)
         interior_events = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
         
         boundary_events = []
@@ -46,7 +42,16 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
     return nothing
 end
 
-@inline validate_kernel_size(N, H) = all(N .- 2 .* H .> 0)
+@inline function validate_kernel_splitting(grid)
+
+    N = size(grid)
+    H = halo_size(grid)
+    
+    grid_is_3D        = all(topology(grid) .!= Flat)
+    grid_large_enough = all(N .- 2 .* H .> 0) 
+
+    return grid_is_3D & grid_is_large_enough
+end
 
 @inline tendency_kernel_size(grid, ::Val{:allfield}) = size(grid) 
 @inline tendency_kernel_size(grid, ::Val{:interior}) = size(grid) .- 2 .* halo_size(grid)
