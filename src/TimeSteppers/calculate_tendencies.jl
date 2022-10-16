@@ -47,8 +47,8 @@ end
     N = size(grid)
     H = halo_size(grid)
 
-    grid_is_3D        = all(topology(grid) .!= Flat)
-    grid_large_enough = all(N .- 2 .* H .> 0) 
+    grid_is_3D           = all(topology(grid) .!= Flat)
+    grid_is_large_enough = all(N .- 2 .* H .> 0) 
 
     return grid_is_3D & grid_is_large_enough
 end
