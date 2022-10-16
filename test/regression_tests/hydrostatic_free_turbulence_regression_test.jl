@@ -7,7 +7,7 @@ using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, fᶠᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_velocity!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continuity!
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
@@ -90,7 +90,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     run!(simulation)
 
     # Update w velocity
-    w_event = compute_w_from_continuity!(model.velocities, arch, grid; :allfield)
+    w_event = compute_w_from_continuity!(model.velocities, arch, grid; region_to_compute = :allfield)
     wait(device(arch), w_event)
 
     # Test results
