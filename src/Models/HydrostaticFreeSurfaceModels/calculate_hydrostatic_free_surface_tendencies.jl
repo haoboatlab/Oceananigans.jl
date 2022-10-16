@@ -2,9 +2,9 @@ import Oceananigans: tracer_tendency_kernel_function
 
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Architectures: device, device_event
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: work_layout, tendency_kernel_size, tendency_kernel_offset
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.TimeSteppers: calculate_tendencies!, tendency_kernel_size, tendency_kernel_offset
+using Oceananigans.TimeSteppers: calculate_tendencies!
 import Oceananigans.TimeSteppers: calculate_tendency_contributions!, calculate_boundary_tendency_contributions!
 
 """ Store previous value of the source term and calculate current source term. """

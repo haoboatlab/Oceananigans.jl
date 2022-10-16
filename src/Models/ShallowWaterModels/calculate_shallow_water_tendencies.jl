@@ -1,7 +1,7 @@
-using Oceananigans.TimeSteppers: calculate_tendencies!, tendency_kernel_size, tendency_kernel_offset
+using Oceananigans.TimeSteppers: calculate_tendencies! 
 import Oceananigans.TimeSteppers: calculate_tendency_contributions!, calculate_boundary_tendency_contributions!
 
-using Oceananigans.Utils: work_layout, heuristic_workgroup
+using Oceananigans.Utils: work_layout, heuristic_workgroup, tendency_kernel_size, tendency_kernel_offset
 using Oceananigans: fields
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent

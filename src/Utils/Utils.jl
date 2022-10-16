@@ -1,6 +1,8 @@
 module Utils
 
 export launch_config, work_layout, launch!
+export tendency_kernel_size, tendency_kernel_offset
+export tendency_kernel_size_aux, tendency_kernel_offset_aux
 export cell_advection_timescale
 export TimeStepWizard, update_Δt!
 export prettytime, pretty_filesize
@@ -29,6 +31,7 @@ instantiate(X::DataType) = X()
 
 include("prettysummary.jl")
 include("kernel_launching.jl")
+include("offset_kernel_parameters.jl")
 include("cell_advection_timescale.jl")
 include("prettytime.jl")
 include("pretty_filesize.jl")

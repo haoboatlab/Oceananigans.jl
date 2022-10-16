@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: device, device_event
 using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶜᶜ
-using Oceananigans.TimeSteppers: tendency_kernel_size_aux, tendency_kernel_offset_aux
+using Oceananigans.Utils: tendency_kernel_size_aux, tendency_kernel_offset_aux
 
 """
     compute_w_from_continuity!(model)

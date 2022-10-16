@@ -249,12 +249,13 @@ end
 ##### Don't splite kernels for the cubed sphere!
 #####
 
-import Oceananigans.TimeSteppers: validate_kernel_splitting, tendency_kernel_size, tendency_kernel_size_aux
-using Oceananigans.TimeSteppers: add2
+import Oceananigans.Utils: tendency_kernel_size, tendency_kernel_size_aux
+import Oceananigans.TimeSteppers: validate_kernel_splitting
+using Oceananigans.Utils: add2
 
 @inline validate_kernel_splitting(grid::ConformalCubedSphereGrid) = false
 @inline tendency_kernel_size(grid::ConformalCubedSphereGrid, ::Val{:allfield}) = (size(grid, 1), size(grid, 2), size(grid, 3))
-@inline tendency_kernel_size_aux(grid::ConformalCubedSphereGrid, ::Val{:allfield}) = size(grid)[[1, 2, 3]] .+ add2.(halo_size(grid))
+@inline tendency_kernel_size_aux(grid::ConformalCubedSphereGrid, ::Val{:allfield}) = (size(grid, 1), size(grid, 2), size(grid, 3))
 
 #####
 ##### filling grid halos
