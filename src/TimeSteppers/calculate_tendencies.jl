@@ -77,7 +77,7 @@ end
 @inline tendency_kernel_offset(grid, ::Val{:bottom}) = (halo_size(grid, 1), halo_size(grid, 2), 0)
 @inline tendency_kernel_offset(grid, ::Val{:top})    = (halo_size(grid, 1), halo_size(grid, 2), size(grid, 3) - halo_size(grid, 3))
 
-## Auxiliary fields (such as velocity) do not fill halo but calculate values on the boundaries directly
+## Non-prognostic fields do not fill halo but calculate values on the boundaries directly
 @inline add2(H) = ifelse(H > 0,  2, 0)
 @inline add1(H) = ifelse(H > 0,  1, 0)
 @inline min1(H) = ifelse(H > 0, -1, 0)

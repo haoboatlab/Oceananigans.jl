@@ -16,9 +16,9 @@ function calculate_tendency_contributions!(model::HydrostaticFreeSurfaceModel, r
     kernel_size = tendency_kernel_size(grid, Val(region_to_compute))
     offsets     = tendency_kernel_offset(grid, Val(region_to_compute))
 
-    events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_size, offsets; dependencies)
-
-    Gη_event = calculate_free_surface_tendency!(grid, model, Val(region_to_compute); dependencies)
+    w_event  = compute_w_from_continuity!(model.velocities, arch, grid; region_to_compute, dependencies) 
+    events   = calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_size, offsets; dependencies = w_event)
+    Gη_event = calculate_free_surface_tendency!(grid, model, Val(region_to_compute); dependencies = w_event)
 
     push!(events, Gη_event)
 
@@ -50,12 +50,12 @@ function calculate_tendency_contributions!(model::HydrostaticFreeSurfaceModel, r
                            model.auxiliary_fields,
                            c_forcing,
                            model.clock;
-                           dependencies)
+                           dependencies = w_event)
 
         push!(events, Gc_event)
     end
 
-    return Tuple(events)
+    return tuple(w_event, events...)
 end
 
 calculate_free_surface_tendency!(grid, model, ::Val{:top}; kwargs...)    = NoneEvent()

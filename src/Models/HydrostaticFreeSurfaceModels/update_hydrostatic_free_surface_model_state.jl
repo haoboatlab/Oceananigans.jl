@@ -26,7 +26,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
     @apply_regionally update_state_actions!(model)
 
-    fill_halo_regions!(model.velocities.w, model.clock, fields(model))
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
     fill_halo_regions!(model.pressure.pHY′)
     
@@ -43,7 +42,6 @@ function masking_actions!(model)
 end
 
 function update_state_actions!(model) 
-    compute_w_from_continuity!(model)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
 end
