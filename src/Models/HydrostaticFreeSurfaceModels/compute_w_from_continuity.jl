@@ -11,7 +11,7 @@ Compute the vertical velocity ``w`` by integrating the continuity equation from 
 w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 ```
 """
-function compute_w_from_continuity!(velocities, arch, grid; region_to_compute, dependencies) 
+function compute_w_from_continuity!(velocities, arch, grid; region_to_compute, dependencies = device_event(arch)) 
     
     kernel_size   = tendency_kernel_size_aux(grid, Val(region_to_compute))[[1, 2]]
     kernel_offset = tendency_kernel_offset_aux(grid, Val(region_to_compute))[[1, 2]]
