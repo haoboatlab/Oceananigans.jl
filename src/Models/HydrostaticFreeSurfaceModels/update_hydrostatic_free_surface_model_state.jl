@@ -47,7 +47,7 @@ function update_state_actions!(model::HydrostaticFreeSurfaceModel, region_to_com
                                            model.tracers; 
                                            region_to_compute, dependencies)
                                            
-    w_event  = compute_w_from_continuity!(model.velocities, arch, grid; region_to_compute, dependencies) 
+    w_event  = compute_w_from_continuity!(model.velocities, model.architecture, model.grid; region_to_compute, dependencies) 
 
     return (p_event, w_event)
 end

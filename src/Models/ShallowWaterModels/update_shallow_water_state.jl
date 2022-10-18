@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.TimeSteppers: update_state!, update_state_actions!
 
 """
     update_state!(model::ShallowWaterModel)
@@ -35,3 +35,5 @@ function compute_velocities!(U, ::ConservativeFormulation)
     compute!(U.u)
     compute!(U.v)
 end
+
+update_state_actions!(model::ShallowWaterModel, region; kwargs...) = tuple(NoneEvent())
