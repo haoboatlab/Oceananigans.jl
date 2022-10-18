@@ -5,7 +5,7 @@ calculate_boundary_tendency_contributions!(model)           = nothing
 update_state_actions!(model, region; kwargs...)             = nothing
 
 """
-calculate_tendencies!(model::NonhydrostaticModel)
+calculate_tendencies!(model)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
@@ -31,7 +31,7 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
         for region in (:west, :east, :south, :north, :bottom, :top)
             push!(pre_boundary_events, update_state_actions!(model, region; dependencies)...)
             push!(boundary_events, calculate_tendency_contributions!(model, region;
-                                   dependencies = MultiEvent(pre_boundary_events[end], pre_interior_events[end]))...)
+                                   dependencies = MultiEvent((pre_boundary_events[end], pre_interior_events[end])))...)
         end
 
         wait(device(arch), MultiEvent(tuple(fill_halo_events..., pre_interior_events..., interior_events..., pre_boundary_events..., boundary_events...)))
