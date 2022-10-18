@@ -35,7 +35,7 @@ function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; reg
     kernel_offset = tendency_kernel_offset_aux(grid, Val(region_to_compute))[[1, 2]]
 
     pressure_event = launch!(arch, grid, kernel_size, _update_hydrostatic_pressure!,
-                                   pHY′, kernel_offset, grid, buoyancy, tracers,
+                                   pHY′, kernel_offset, grid, buoyancy, tracers;
                                    dependencies)
 
     # Fill halo regions for pressure
