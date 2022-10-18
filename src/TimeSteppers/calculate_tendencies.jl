@@ -51,13 +51,16 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
     return nothing
 end
 
-@inline function validate_kernel_splitting(grid)
 
-    N = size(grid)
-    H = halo_size(grid)
+validate_kernel_splitting(grid) = false
 
-    grid_is_3D           = all(topology(grid) .!= Flat)
-    grid_is_large_enough = all(N .- 2 .* H .> 0) 
+# @inline function validate_kernel_splitting(grid)
 
-    return grid_is_3D & grid_is_large_enough
-end
+#     N = size(grid)
+#     H = halo_size(grid)
+
+#     grid_is_3D           = all(topology(grid) .!= Flat)
+#     grid_is_large_enough = all(N .- 2 .* H .> 0) 
+
+#     return grid_is_3D & grid_is_large_enough
+# end
