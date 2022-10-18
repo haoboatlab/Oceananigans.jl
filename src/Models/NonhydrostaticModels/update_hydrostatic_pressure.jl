@@ -21,7 +21,7 @@ the `buoyancy_perturbation` downwards:
     end
 end
 
-update_hydrostatic_pressure!(model.pressures.pHY′, model.architecture, ::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, model.buoyancy, model.tracers) = nothing
+update_hydrostatic_pressure!(pressure, arch, ::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, buoyancy, tracers) = nothing
 
 # Partial cell "algorithm"
 const PCB = PartialCellBottom
