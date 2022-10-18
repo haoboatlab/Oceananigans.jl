@@ -4,7 +4,7 @@ using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.TimeSteppers: update_state!, update_state_actions!
 
 """
     update_state!(model::NonhydrostaticModel)
@@ -28,10 +28,17 @@ function update_state!(model::NonhydrostaticModel)
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
-
-    update_hydrostatic_pressure!(model)
-    fill_halo_regions!(model.pressures.pHY′)
 
     return nothing
 end
+
+function update_state_actions!(model::NonhydrostaticModel, region_to_compute; dependencies) 
+    p_event = update_hydrostatic_pressure!(model.pressure.pHY′, 
+                                           model.architecture, 
+                                           model.grid, 
+                                           model.buoyancy, 
+                                           model.tracers; 
+                                           region_to_compute, dependencies)
+    return Tuple(p_event)
+end
+

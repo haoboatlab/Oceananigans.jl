@@ -5,7 +5,7 @@ using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
-import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.TimeSteppers: update_state!, update_state_actions!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -27,8 +27,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     @apply_regionally update_state_actions!(model)
 
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
-    fill_halo_regions!(model.pressure.pHY′)
-    
+
     return nothing
 end
 
@@ -41,7 +40,15 @@ function masking_actions!(model)
     wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
 end
 
-function update_state_actions!(model) 
-    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-    update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
+function update_state_actions!(model::HydrostaticFreeSurfaceModel, region_to_compute; dependencies) 
+    p_event = update_hydrostatic_pressure!(model.pressure.pHY′, 
+                                           model.architecture, 
+                                           model.grid, 
+                                           model.buoyancy, 
+                                           model.tracers; 
+                                           region_to_compute, dependencies)
+    w_event  = compute_w_from_continuity!(model.velocities, arch, grid; region_to_compute, dependencies) 
+
+    return (p_event, w_event)
 end
+

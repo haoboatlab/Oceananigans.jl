@@ -2,6 +2,7 @@ using Oceananigans.Grids: size, halo_size, topology, Flat
 
 calculate_tendency_contributions!(model, region; kwargs...) = nothing
 calculate_boundary_tendency_contributions!(model)           = nothing
+update_state_actions!(model, region; kwargs...)             = nothing
 
 """
 calculate_tendencies!(model::NonhydrostaticModel)
@@ -18,22 +19,29 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     if validate_kernel_splitting(model.grid) # Split communication and computation for large 3D simulations (for which N > 2H in every direction) # && !(fill_halo_events isa NoneEvent)
-        interior_events  = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
+
+        pre_interior_events = update_state_actions!(model, :interior; dependencies = device_event(arch))
+        interior_events     = calculate_tendency_contributions!(model, :interior; dependencies = pre_interior_events[end])
         
+        pre_boundary_events = []
         boundary_events = []
+
         dependencies    = fill_halo_events[end]
 
         for region in (:west, :east, :south, :north, :bottom, :top)
-            push!(boundary_events, calculate_tendency_contributions!(model, region; dependencies)...)
+            push!(pre_boundary_events, update_state_actions!(model, region; dependencies)...)
+            push!(boundary_events, calculate_tendency_contributions!(model, region; dependencies = pre_boundary_events[end])...)
         end
 
-        wait(device(arch), MultiEvent(tuple(fill_halo_events..., interior_events..., boundary_events...)))
+        wait(device(arch), MultiEvent(tuple(fill_halo_events..., pre_interior_events..., interior_events..., pre_boundary_events..., boundary_events...)))
+
     else # For 2D computations, not communicating simulations, or domains that have (N < 2H) in at least one direction, launching 1 kernel is enough
         wait(device(arch), MultiEvent(tuple(fill_halo_events...)))
 
-        interior_events = calculate_tendency_contributions!(model, :allfield; dependencies = device_event(arch))
+        pre_interior_events = update_state_actions!(model, :allfield; dependencies = device_event(arch))
+        interior_events = calculate_tendency_contributions!(model, :allfield; dependencies = pre_interior_events[end])
 
-        wait(device(arch), MultiEvent(tuple(interior_events...)))
+        wait(device(arch), MultiEvent(tuple(pre_interior_events..., interior_events...)))
     end
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
