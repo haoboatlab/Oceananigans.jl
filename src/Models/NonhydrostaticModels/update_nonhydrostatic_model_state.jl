@@ -28,12 +28,13 @@ function update_state!(model::NonhydrostaticModel)
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
+    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     return nothing
 end
 
 function update_state_actions!(model::NonhydrostaticModel, region_to_compute; dependencies) 
-    p_event = update_hydrostatic_pressure!(model.pressure.pHY′, 
+    p_event = update_hydrostatic_pressure!(model.pressures.pHY′, 
                                            model.architecture, 
                                            model.grid, 
                                            model.buoyancy, 

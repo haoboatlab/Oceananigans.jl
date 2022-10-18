@@ -24,8 +24,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
-    @apply_regionally update_state_actions!(model)
-
+    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     return nothing
@@ -47,6 +46,7 @@ function update_state_actions!(model::HydrostaticFreeSurfaceModel, region_to_com
                                            model.buoyancy, 
                                            model.tracers; 
                                            region_to_compute, dependencies)
+                                           
     w_event  = compute_w_from_continuity!(model.velocities, arch, grid; region_to_compute, dependencies) 
 
     return (p_event, w_event)
