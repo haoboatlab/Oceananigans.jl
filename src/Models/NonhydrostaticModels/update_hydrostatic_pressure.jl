@@ -21,13 +21,13 @@ the `buoyancy_perturbation` downwards:
     end
 end
 
-update_hydrostatic_pressure!(pressure, arch, ::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, buoyancy, tracers) = nothing
+update_hydrostatic_pressure!(pressure, arch, ::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, buoyancy, tracers; kwargs...) = NoneEvent()
 
 # Partial cell "algorithm"
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
-update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers) =
-    update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers)
+update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; region, dependencies) =
+    update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; region, dependencies)
 
 function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; region_to_compute, dependencies)
 
@@ -36,7 +36,7 @@ function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; reg
 
     pressure_event = launch!(arch, grid, kernel_size, _update_hydrostatic_pressure!,
                                    pHY′, kernel_offset, grid, buoyancy, tracers,
-                                   dependencies = Event(device(arch)))
+                                   dependencies)
 
     # Fill halo regions for pressure
 
