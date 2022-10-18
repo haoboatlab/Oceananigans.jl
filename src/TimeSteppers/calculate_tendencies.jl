@@ -30,7 +30,8 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
 
         for region in (:west, :east, :south, :north, :bottom, :top)
             push!(pre_boundary_events, update_state_actions!(model, region; dependencies)...)
-            push!(boundary_events, calculate_tendency_contributions!(model, region; dependencies = pre_boundary_events[end])...)
+            push!(boundary_events, calculate_tendency_contributions!(model, region;
+                                   dependencies = MultiEvent(pre_boundary_events[end], pre_interior_events[end]))...)
         end
 
         wait(device(arch), MultiEvent(tuple(fill_halo_events..., pre_interior_events..., interior_events..., pre_boundary_events..., boundary_events...)))
@@ -51,15 +52,13 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
     return nothing
 end
 
-validate_kernel_splitting(grid) = false
+@inline function validate_kernel_splitting(grid)
 
-# @inline function validate_kernel_splitting(grid)
+    N = size(grid)
+    H = halo_size(grid)
 
-#     N = size(grid)
-#     H = halo_size(grid)
+    grid_is_3D           = all(topology(grid) .!= Flat)
+    grid_is_large_enough = all(N .- 2 .* H .> 0) 
 
-#     grid_is_3D           = all(topology(grid) .!= Flat)
-#     grid_is_large_enough = all(N .- 2 .* H .> 0) 
-
-#     return grid_is_3D & grid_is_large_enough
-# end
+    return grid_is_3D & grid_is_large_enough
+end
