@@ -51,7 +51,6 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
     return nothing
 end
 
-
 validate_kernel_splitting(grid) = false
 
 # @inline function validate_kernel_splitting(grid)
