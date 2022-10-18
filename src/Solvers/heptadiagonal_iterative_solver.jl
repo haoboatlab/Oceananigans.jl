@@ -101,6 +101,7 @@ function HeptadiagonalIterativeSolver(coeffs;
     # They are then recalculated before the first time step of the simulation.
 
     placeholder_constructors = deepcopy(matrix_constructors)
+
     M = prod(problem_size)
     update_diag!(placeholder_constructors, arch, M, M, diagonal, 1.0, 0)
 
