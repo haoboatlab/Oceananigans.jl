@@ -1,6 +1,9 @@
 using SparseArrays, LinearAlgebra, Statistics
+using CUDA
+using Oceananigans.Architectures
+using Oceananigans.Architectures: arch_array
 
-mutable struct SpaiIterator{VF<:AbstractVector, SV<:SparseVector, VI<:AbstractVector, Ti}
+mutable struct SpaiIterator{VF<:AbstractVector, SV<:AbstractVector, VI<:AbstractVector, SM}
      mhat :: VF
         e :: SV
         r :: SV
@@ -8,8 +11,17 @@ mutable struct SpaiIterator{VF<:AbstractVector, SV<:SparseVector, VI<:AbstractVe
         I :: VI
         J̃ :: VI
         Ĩ :: VI
-        Q :: SparseMatrixCSC{Float64, Ti}
-        R :: SparseMatrixCSC{Float64, Ti}
+        Q :: SM
+        R :: SM
+end
+
+function SpaiIterator(e, r, J, Q)
+    mhat = deepcopy(e)
+    I    = deepcopy(J)
+    Ĩ    = deepcopy(J)
+    J̃    = deepcopy(J)
+    R    = deepcopy(Q)
+    return SpaiIterator(mhat, e, r, J, I, Ĩ, J̃, Q, R)
 end
 
 """
@@ -58,7 +70,7 @@ if we choose a sufficiently large `nzrel` (`nzrel = size(A, 1)` for example), th
 `sparse_approximate_inverse(A, 0.0, nzrel) = A⁻¹ ± machine_precision`
 
 """
-function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
+function sparse_approximate_inverse(A::AbstractMatrix; ε, nzrel)
    
     FT = eltype(A)
     n  = size(A, 1)
@@ -68,26 +80,49 @@ function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
     Q  = spzeros(FT, 1, 1)
     J  = Int64[1]
 
-    iterator = SpaiIterator(e, e, r, J, J, J, J, Q, Q)
-
-    # this loop can be parallelized!
-    for j = 1:n 
-        @show j, n
-        # maximum number of elements in a column
-        ncolmax = nzrel * nnz(A[:, j])
-
-        set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
-        mj             = spzeros(FT, n, 1)
-        mj[iterator.J] = iterator.mhat
-        M[:, j]        = mj
+    if CUDA.has_cuda_gpu()
+        arch = GPU()
+        r = CuSparseVector(r)
+        e = CuSparseVector(e)
+    else
+        arch = CPU()
     end
+     
+    Q = arch_sparse_matrix(arch, Q)
+    M = arch_sparse_matrix(arch, M)
+    J = arch_array(arch, J)
 
-    return M
+    A_arch = arch_sparse_matrix(arch, A)
+    
+    iterators = [SpaiIterator(e, r, J, Q) for i in 1:n]
+
+    maximum_threads = 256
+    threads         = max(maximum_threads, n)
+
+    build_kernel = build_approximate_inverse!(Architectures.device(arch), threads, n)
+    build_event  = build_kernel(M, A_arch, iterators, ε, nzrel, n, FT)
+
+    wait(device(arch), build_event)
+
+    return arch_sparse_matrix(architecture(A), M)
 end
 
-function set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
+@kernel function build_approximate_inverse!(M, A, iterators, ε, nzrel, n, FT)
+    j = @index(Global, Linear)
+
+    iterator = iterators[j]
+    # maximum number of elements in a column
+    ncolmax = nzrel * nnz(A[:, j])
+
+    set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
+    mj             = spzeros(FT, n, 1)
+    mj[iterator.J] = iterator.mhat
+    M[:, j]        = mj
+end
+
+@inline function set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
     @inbounds begin
-        iterator.e = speyecolumn(FT, j, n)
+        speyecolumn!(iterator.e, FT, j, n)
 
         # the initial sparsity pattern is assumed to be mⱼ = eⱼ
         initial_sparsity_pattern!(iterator, j)
@@ -197,8 +232,9 @@ end
 @inline minimize!(i::SpaiIterator, bj)      = i.mhat = (i.R \ (i.Q' * bj)[1:length(i.J)])
 @inline speye(FT, n) = spdiagm(0=>ones(FT, n))
 
-@inline function speyecolumn(FT, j, n) 
-    e    = spzeros(FT, n)
-    e[j] = FT(1)
-    return e
+@inline function speyecolumn!(e::CuSparseVector, FT, j, n) 
+    push!(e.iPtr, j)
+    push!(e.nzVal, FT(1))
 end
+
+@inline speyecolumn!(e::SparseVector, FT, j, n) = e[j] = FT(1)

@@ -167,15 +167,7 @@ end
     end
 end
 
-function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
-
-   # let's choose an initial sparsity => diagonal
-   A_cpu    = arch_sparse_matrix(CPU(), A)
-   Minv_cpu = sparse_approximate_inverse(A_cpu, ε = ε, nzrel = nzrel)
-   
-   Minv = arch_sparse_matrix(architecture(A), Minv_cpu)
-   return SparseInversePreconditioner(Minv)
-end
+sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel) = SparseInversePreconditioner(sparse_approximate_inverse(A, ε = ε, nzrel = nzrel))
 
 multigrid_preconditioner(A::AbstractMatrix) = aspreconditioner(create_multilevel(RugeStubenAMG(), A))
 
