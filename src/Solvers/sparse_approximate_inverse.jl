@@ -1,5 +1,6 @@
 using SparseArrays, LinearAlgebra, Statistics
 using CUDA
+using CUDA.CUSPARSE
 using Oceananigans.Architectures
 using Oceananigans.Architectures: arch_array
 
@@ -74,27 +75,34 @@ function sparse_approximate_inverse(A::AbstractMatrix; ε, nzrel)
    
     FT = eltype(A)
     n  = size(A, 1)
-    r  = spzeros(FT, n)
-    e  = spzeros(FT, n)
-    M  = spzeros(FT, n, n)
-    Q  = spzeros(FT, 1, 1)
-    J  = Int64[1]
 
     if CUDA.has_cuda_gpu()
         arch = GPU()
-        r = CuSparseVector(r)
-        e = CuSparseVector(e)
     else
         arch = CPU()
     end
      
-    Q = arch_sparse_matrix(arch, Q)
-    M = arch_sparse_matrix(arch, M)
-    J = arch_array(arch, J)
-
     A_arch = arch_sparse_matrix(arch, A)
     
-    iterators = [SpaiIterator(e, r, J, Q) for i in 1:n]
+    iterators = SpaiIterator[]
+
+    for j in 1:n
+        e    = spzeros(FT, n)
+        r    = spzeros(FT, n)
+        e[j] = FT(1)
+        J    = Int64[1]
+
+        Q  = spzeros(FT, 1, 1)
+
+        Q = arch_sparse_matrix(arch, Q)
+        J = arch_array(arch, J)
+        e = arch_sparse_vector(arch, e)
+        r = arch_sparse_vector(arch, r)
+        push!(iterators, SpaiIterator(e, r, J, Q))
+    end
+    
+    M  = spzeros(FT, n, n)
+    M = arch_sparse_matrix(arch, M)
 
     maximum_threads = 256
     threads         = max(maximum_threads, n)
@@ -111,6 +119,7 @@ end
     j = @index(Global, Linear)
 
     iterator = iterators[j]
+
     # maximum number of elements in a column
     ncolmax = nzrel * nnz(A[:, j])
 
@@ -122,8 +131,6 @@ end
 
 @inline function set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
     @inbounds begin
-        speyecolumn!(iterator.e, FT, j, n)
-
         # the initial sparsity pattern is assumed to be mⱼ = eⱼ
         initial_sparsity_pattern!(iterator, j)
 
@@ -231,10 +238,3 @@ end
 @inline calc_residuals!(i::SpaiIterator, A) = copyto!(i.r, i.e - A[:, i.J] * i.mhat)
 @inline minimize!(i::SpaiIterator, bj)      = i.mhat = (i.R \ (i.Q' * bj)[1:length(i.J)])
 @inline speye(FT, n) = spdiagm(0=>ones(FT, n))
-
-@inline function speyecolumn!(e::CuSparseVector, FT, j, n) 
-    push!(e.iPtr, j)
-    push!(e.nzVal, FT(1))
-end
-
-@inline speyecolumn!(e::SparseVector, FT, j, n) = e[j] = FT(1)

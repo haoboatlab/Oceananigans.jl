@@ -29,6 +29,12 @@ using SparseArrays: fkeep!
 @inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
 @inline arch_sparse_matrix(::GPU, A::CuSparseMatrixCSC) = A
 
+@inline arch_sparse_vector(::CPU, A::CuSparseVector) = SparseVector(A)
+@inline arch_sparse_vector(::GPU, A::SparseVector)   = CuSparseVector(A)
+
+@inline arch_sparse_vector(::CPU, A::SparseVector)   = A
+@inline arch_sparse_vector(::GPU, A::CuSparseVector) = A
+
 # We need to update the diagonal element each time the time step changes!!
 function update_diag!(constr, arch, M, N, diag, Δt, disp)   
     colptr, rowval, nzval = unpack_constructors(arch, constr)
