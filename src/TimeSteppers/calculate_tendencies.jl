@@ -74,7 +74,7 @@ function create_multievent(args...)
         push!(events, args)
     else
         for arg in args
-            if arg isa Vector || args isa Tuple
+            if arg isa Vector || arg isa Tuple
                 push!(events, arg...)
             elseif arg isa Event
                 push!(events, arg)
