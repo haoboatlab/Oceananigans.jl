@@ -70,11 +70,15 @@ end
 
 function create_multievent(args...)
     events = []
-    for arg in args
-        if arg isa Vector || args isa Tuple
-            push!(events, arg...)
-        elseif arg isa Event
-            push!(events, arg)
+    if args isa Event
+        push!(events, args)
+    else
+        for arg in args
+            if arg isa Vector || args isa Tuple
+                push!(events, arg...)
+            elseif arg isa Event
+                push!(events, arg)
+            end
         end
     end
 
