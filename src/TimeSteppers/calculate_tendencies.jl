@@ -22,9 +22,9 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
 
         pre_interior_events = update_state_actions!(model, :interior; dependencies = device_event(arch))
         
-        wait(device(arch), MultiEvent(tuple(pre_interior_events)))
+        wait(device(arch), MultiEvent(tuple(pre_interior_events...)))
         interior_events     = calculate_tendency_contributions!(model, :interior; dependencies = pre_interior_events[end])
-        wait(device(arch), MultiEvent(tuple(interior_events)))
+        wait(device(arch), MultiEvent(tuple(interior_events...)))
         
         pre_boundary_events = []
         boundary_events = []
@@ -33,7 +33,7 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
 
         for region in (:west, :east, :south, :north, :bottom, :top)
             push!(pre_boundary_events, update_state_actions!(model, region; dependencies)...)
-            wait(device(arch), MultiEvent(tuple(pre_boundary_events[end]...)))
+            wait(device(arch), MultiEvent(tuple(pre_boundary_event[end]...)))
             push!(boundary_events, calculate_tendency_contributions!(model, region;
                                    dependencies = MultiEvent((pre_boundary_events[end]..., pre_interior_events[end])))...)
             wait(device(arch), MultiEvent(tuple(boundary_events[end]...)))
