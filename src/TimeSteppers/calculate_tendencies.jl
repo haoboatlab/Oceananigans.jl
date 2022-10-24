@@ -23,7 +23,7 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
         pre_interior_events = update_state_actions!(model, :interior; dependencies = device_event(arch))
         
         # wait(device(arch), MultiEvent(tuple(pre_interior_events...)))
-        interior_events     = calculate_tendency_contributions!(model, :interior; dependencies = pre_interior_events[end])
+        interior_events = calculate_tendency_contributions!(model, :interior; dependencies = pre_interior_events[end])
         # wait(device(arch), MultiEvent(tuple(interior_events...)))
         
         pre_boundary_events = []
@@ -33,21 +33,21 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
 
         for region in (:west, :east, :south, :north, :bottom, :top)
             push!(pre_boundary_events, update_state_actions!(model, region; dependencies)...)
-            wait(device(arch), MultiEvent(tuple(pre_boundary_events[end]...)))
+            wait(device(arch), create_multievent(pre_boundary_events[end]))
             push!(boundary_events, calculate_tendency_contributions!(model, region;
-                                   dependencies = MultiEvent((pre_boundary_events[end]..., pre_interior_events[end])))...)
-            wait(device(arch), MultiEvent(tuple(boundary_events[end]...)))
+                                   dependencies = create_multievent(pre_boundary_events[end], pre_interior_events[end])))
+            wait(device(arch),create_multievent(boundary_events[end]))
         end
 
-        wait(device(arch), MultiEvent(tuple(fill_halo_events..., pre_interior_events..., interior_events..., pre_boundary_events..., boundary_events...)))
+        wait(device(arch), MultiEvent(create_multievent(fill_halo_events, pre_interior_events, interior_events, pre_boundary_events, boundary_events)))
 
     else # For 2D computations, not communicating simulations, or domains that have (N < 2H) in at least one direction, launching 1 kernel is enough
-        wait(device(arch), MultiEvent(tuple(fill_halo_events...)))
+        wait(device(arch), MultiEvent(create_multievent(fill_halo_events)))
 
         pre_interior_events = update_state_actions!(model, :allfield; dependencies = device_event(arch))
         interior_events = calculate_tendency_contributions!(model, :allfield; dependencies = pre_interior_events[end])
 
-        wait(device(arch), MultiEvent(tuple(pre_interior_events..., interior_events...)))
+        wait(device(arch), create_multievent(pre_interior_events, interior_events))
     end
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
@@ -66,4 +66,17 @@ end
     grid_is_large_enough = all(N .- 2 .* H .> 0) 
 
     return grid_is_3D & grid_is_large_enough
+end
+
+function create_multievent(args...)
+    events = []
+    for arg in args
+        if arg isa Vector || args isa Tuple
+            push!(events, arg...)
+        elseif arg isa Event
+            push!(events, arg)
+        end
+    end
+
+    return MultiEvent(tuple(events...))
 end
