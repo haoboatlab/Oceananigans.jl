@@ -40,6 +40,6 @@ function update_state_actions!(model::NonhydrostaticModel, region_to_compute; de
                                            model.buoyancy, 
                                            model.tracers; 
                                            region_to_compute, dependencies)
-    return tuple(p_event)
+    return [p_event]
 end
 

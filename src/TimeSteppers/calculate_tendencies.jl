@@ -22,9 +22,9 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
 
         pre_interior_events = update_state_actions!(model, :interior; dependencies = device_event(arch))
         
-        wait(device(arch), MultiEvent(tuple(pre_interior_events...)))
+        # wait(device(arch), MultiEvent(tuple(pre_interior_events...)))
         interior_events     = calculate_tendency_contributions!(model, :interior; dependencies = pre_interior_events[end])
-        wait(device(arch), MultiEvent(tuple(interior_events...)))
+        # wait(device(arch), MultiEvent(tuple(interior_events...)))
         
         pre_boundary_events = []
         boundary_events = []

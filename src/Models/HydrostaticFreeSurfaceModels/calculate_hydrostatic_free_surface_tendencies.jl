@@ -54,7 +54,7 @@ function calculate_tendency_contributions!(model::HydrostaticFreeSurfaceModel, r
         push!(events, Gc_event)
     end
 
-    return tuple(events...)
+    return events
 end
 
 calculate_free_surface_tendency!(grid, model, ::Val{:top}; kwargs...)    = NoneEvent()
