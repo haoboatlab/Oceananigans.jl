@@ -21,10 +21,7 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
     if validate_kernel_splitting(model.grid) # Split communication and computation for large 3D simulations (for which N > 2H in every direction) # && !(fill_halo_events isa NoneEvent)
 
         pre_interior_events = update_state_actions!(model, :interior; dependencies = device_event(arch))
-        
-        wait(device(arch), create_multievent(pre_interior_events))
         interior_events = calculate_tendency_contributions!(model, :interior; dependencies = pre_interior_events[end])
-        wait(device(arch), create_multievent(interior_events))
         
         pre_boundary_events = []
         boundary_events = []
@@ -32,10 +29,10 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
         dependencies    = fill_halo_events[end]
 
         for region in (:west, :east, :south, :north, :bottom, :top)
-            push!(pre_boundary_events, update_state_actions!(model, region; dependencies))
+            push!(pre_boundary_events, update_state_actions!(model, region; dependencies)...)
             wait(device(arch), create_multievent(pre_boundary_events[end]))
             push!(boundary_events, calculate_tendency_contributions!(model, region;
-                                   dependencies = create_multievent(pre_boundary_events[end])))
+                                   dependencies = create_multievent(pre_boundary_events[end], pre_interior_events[end]))...)
             wait(device(arch), create_multievent(boundary_events[end]))
         end
 
