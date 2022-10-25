@@ -22,9 +22,9 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
 
         pre_interior_events = update_state_actions!(model, :interior; dependencies = device_event(arch))
         
-        # wait(device(arch), MultiEvent(tuple(pre_interior_events...)))
+        wait(device(arch), create_multievent(pre_interior_events))
         interior_events = calculate_tendency_contributions!(model, :interior; dependencies = pre_interior_events[end])
-        # wait(device(arch), MultiEvent(tuple(interior_events...)))
+        wait(device(arch), create_multievent(interior_events))
         
         pre_boundary_events = []
         boundary_events = []
@@ -35,14 +35,14 @@ function calculate_tendencies!(model, fill_halo_events = [NoneEvent()])
             push!(pre_boundary_events, update_state_actions!(model, region; dependencies))
             wait(device(arch), create_multievent(pre_boundary_events[end]))
             push!(boundary_events, calculate_tendency_contributions!(model, region;
-                                   dependencies = create_multievent(pre_boundary_events[end], pre_interior_events[end])))
-            wait(device(arch),create_multievent(boundary_events[end]))
+                                   dependencies = create_multievent(pre_boundary_events[end])))
+            wait(device(arch), create_multievent(boundary_events[end]))
         end
 
-        wait(device(arch), MultiEvent(create_multievent(fill_halo_events, pre_interior_events, interior_events, pre_boundary_events, boundary_events)))
+        wait(device(arch), create_multievent(fill_halo_events, pre_interior_events, interior_events, pre_boundary_events, boundary_events))
 
     else # For 2D computations, not communicating simulations, or domains that have (N < 2H) in at least one direction, launching 1 kernel is enough
-        wait(device(arch), MultiEvent(create_multievent(fill_halo_events)))
+        wait(device(arch), create_multievent(fill_halo_events))
 
         pre_interior_events = update_state_actions!(model, :allfield; dependencies = device_event(arch))
         interior_events = calculate_tendency_contributions!(model, :allfield; dependencies = pre_interior_events[end])
@@ -74,7 +74,7 @@ function create_multievent(args...)
         push!(events, args)
     else
         for arg in args
-            if arg isa Vector || arg isa Tuple
+            if arg isa Vector || arg isa Tuple || arg isa Array
                 push!(events, arg...)
             elseif arg isa Event
                 push!(events, arg)
