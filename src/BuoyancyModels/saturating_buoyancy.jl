@@ -2,6 +2,16 @@ struct SaturatingBuoyancy{FT} <: AbstractBuoyancyModel{Nothing}
     background_buoyancy_frequency :: FT
 end
 
+"""
+    SaturatingBuoyancy(; background_buoyancy_frequency)
+
+Returns a buoyancy model with piecewise constant saturtation.
+SaturatingBuoyancy requries two tracers, a "dry buoyancy tracer" D
+and a "moist buoyancy tracer", M.
+"""
+SaturatingBuoyancy(; background_buoyancy_frequency) =
+    SaturatingBuoyancy(background_buoyancy_frequency)
+
 required_tracers(::SaturatingBuoyancy) = (:D, :M)
 
 Base.nameof(::Type{SaturatingBuoyancy}) = "SaturatingBuoyancy"
