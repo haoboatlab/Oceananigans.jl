@@ -5,7 +5,7 @@ using KernelAbstractions: @index
 
 only_active_cells_in_worksize(size, grid::IBG) = min(length(grid.wet_cells_map), 256), length(grid.wet_cells_map)
 
-@inline calc_tendency_index(idx, i, j, k, grid::IBG) = Int.(grid.wet_cells_map[idx])
+@inline calc_tendency_index(idx, i, j, k, grid::IBG) = grid.wet_cells_map[idx].I
 
 function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_wet_cell_map = false) where {TX, TY, TZ} 
 
@@ -38,9 +38,9 @@ function create_cells_map(grid, ib)
     full_indices    = findall(interior(wet_cells_field))
     
     # Reduce the size of the wet_cells_map (originally a tuple of Int64)
-    N = maximum(size(grid))
-    Type = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
-    smaller_indices = getproperty.(full_indices, Ref(:I)) .|> Tuple{Type, Type, Type}
+##    N = maximum(size(grid))
+##    Type = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
+##    smaller_indices = getproperty.(full_indices, Ref(:I)) .|> Tuple{Type, Type, Type}
     
-    return smaller_indices
+    return full_indices
 end
