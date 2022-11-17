@@ -86,6 +86,19 @@ function times_x_derivative(a, b, location, i, j, k, answer)
     return CUDA.@allowscalar a∇b[i, j, k] == answer
 end
 
+function z_integral(arch)
+    grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
+    a = Field{Center, Center, Center}(grid)
+
+    ∫ = Field(∫⁻dz(a))
+
+    a .= 1.0
+
+    compute!(∫)
+    return CUDA.@allowscalar all(interior(∫)[:, :, 1] .== 2.5) && all(interior(∫)[:, :, 2] .== 1.5) && all(interior(∫)[:, :, 3] .== 0.5)
+end
+
+
 for arch in archs
     @testset "Abstract operations [$(typeof(arch))]" begin
         @info "Testing abstract operations [$(typeof(arch))]..."

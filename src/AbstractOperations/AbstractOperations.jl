@@ -1,6 +1,7 @@
 module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
+export ∫⁺dx, ∫⁻dx, ∫⁺dy, ∫⁻dy, ∫⁺dz, ∫⁻dz
 export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
@@ -65,6 +66,7 @@ include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
+include("integral.jl")
 include("kernel_function_operation.jl")
 include("conditional_operations.jl")
 include("computed_field.jl")
