@@ -60,7 +60,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
 
         push!(explicit_velocity_step_events, event)
     end
-
+    
     wait(device(architecture(model.grid)), MultiEvent(tuple(explicit_velocity_step_events...)))
 
     for (i, name) in enumerate((:u, :v))
