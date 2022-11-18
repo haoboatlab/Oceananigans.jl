@@ -82,7 +82,7 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies
 
     wait(device(architecture(solver)), event)
 
-    return nothing
+    return event
 end
 
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
