@@ -19,22 +19,22 @@ pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = n
 
 pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt; dependencies = device_event(model.architecture)) = nothing
 
-# function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
-#                                       dependencies = device_event(model.architecture))
+function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
+                                      dependencies = device_event(model.architecture))
 
-#     event = launch!(model.architecture, model.grid, :xyz,
-#                     _barotropic_pressure_correction,
-#                     model.velocities,
-#                     model.grid,
-#                     Δt,
-#                     model.free_surface.gravitational_acceleration,
-#                     model.free_surface.η,
-#                     dependencies = dependencies)
+    event = launch!(model.architecture, model.grid, :xyz,
+                    _barotropic_pressure_correction,
+                    model.velocities,
+                    model.grid,
+                    Δt,
+                    model.free_surface.gravitational_acceleration,
+                    model.free_surface.η,
+                    dependencies = dependencies)
 
-#     wait(device(model.architecture), event)
+    wait(device(model.architecture), event)
 
-#     return nothing
-# end
+    return nothing
+end
 
 calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, dependencies) = NoneEvent()
 

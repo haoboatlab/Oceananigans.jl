@@ -160,7 +160,9 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     @apply_regionally validate_velocity_boundary_conditions(velocities)
 
-    free_surface = FreeSurface(free_surface, velocities, grid)
+    if !isnothing(free_surface)
+        free_surface = FreeSurface(free_surface, velocities, grid)
+    end
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
