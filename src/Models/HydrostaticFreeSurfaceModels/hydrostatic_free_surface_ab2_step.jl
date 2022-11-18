@@ -59,24 +59,26 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                         dependencies = device_event(model))
 
         push!(explicit_velocity_step_events, event)
+        wait(device(architecture(model.grid)), event)
     end
     
-    wait(device(architecture(model.grid)), MultiEvent(tuple(explicit_velocity_step_events...)))
-
     for (i, name) in enumerate((:u, :v))
         velocity_field = model.velocities[name]
 
+        wait(device(architecture(model.grid)), explicit_velocity_step_events[i])
         # TODO: let next implicit solve depend on previous solve + explicit velocity step
         # Need to distinguish between solver events and tendency calculation events.
         # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
-        implicit_step!(velocity_field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.diffusivity_fields,
-                       nothing,
-                       model.clock, 
-                       Δt,
-                       dependencies = explicit_velocity_step_events[i])
+        event = implicit_step!(velocity_field,
+                               model.timestepper.implicit_solver,
+                               model.closure,
+                               model.diffusivity_fields,
+                               nothing,
+                               model.clock, 
+                               Δt,
+                               dependencies = explicit_velocity_step_events[i])
+
+        wait(device(architecture(model.grid)), event)
     end
 
     return explicit_velocity_step_events

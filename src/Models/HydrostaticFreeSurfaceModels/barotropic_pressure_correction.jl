@@ -38,7 +38,7 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
 end
 
 calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, dependencies) = NoneEvent()
-calculate_free_surface_tendency!(grid, model::NothingFreeSurfaceHFSM, dependencies) = NoneEvent()
+calculate_free_surface_tendency!(grid, model::NothingFreeSurfaceHFSM, dependencies)  = NoneEvent()
 
 function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
     u, v, _ = model.velocities
