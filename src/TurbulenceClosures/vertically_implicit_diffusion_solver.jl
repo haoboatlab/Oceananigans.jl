@@ -17,12 +17,11 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 # Fallbacks: extend these function for `closure` to support.
 # TODO: docstring
-@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, Δt, κz) =
-    zero(grid)
+@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, Δt, κz) = zero(grid)
 
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # u
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # v
-@inline νzᶜᶜᶜ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # w
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...)               = zero(grid) # u
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...)               = zero(grid) # v
+@inline νzᶜᶜᶜ(i, j, k, grid, closure, diffusivity_fields, clock, args...)               = zero(grid) # w
 @inline κzᶜᶜᶠ(i, j, k, grid, closure, diffusivity_fields, tracer_index, clock, args...) = zero(grid) # tracers
 
 #####
@@ -168,8 +167,8 @@ function implicit_step!(field::Field,
    # Change this if `location(field)` does not uniquely identify velocity components.
    κz = # "Extractor function
        loc === (Center, Center, Center) ? κzᶜᶜᶠ :
-       loc === (Face, Center, Center)   ? νzᶠᶜᶠ :
-       loc === (Center, Face, Center)   ? νzᶜᶠᶠ :
+       loc === (Face,   Center, Center) ? νzᶠᶜᶠ :
+       loc === (Center, Face,   Center) ? νzᶜᶠᶠ :
        loc === (Center, Center, Face)   ? νzᶜᶜᶜ :
        error("Cannot take an implicit_step! for a field at $location")
 
