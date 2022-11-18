@@ -10,6 +10,7 @@ const HFSM = HydrostaticFreeSurfaceModel
 const ExplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSurface}
 const ImplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
 const SplitExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface}
+const NothingFreeSurfaceHFSM       = HFSM{<:Any, <:Any, <:Any, <:Nothing}
 
 pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = nothing
 
@@ -37,6 +38,7 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
 end
 
 calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, dependencies) = NoneEvent()
+calculate_free_surface_tendency!(grid, model::NothingFreeSurfaceHFSM, dependencies) = NoneEvent()
 
 function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
     u, v, _ = model.velocities
