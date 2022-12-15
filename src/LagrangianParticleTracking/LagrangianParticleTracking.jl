@@ -20,6 +20,9 @@ import Base: size, length, show
 
 abstract type AbstractParticle end
 
+size(particles::AbstractParticle) = size(particles.x)
+length(particles::AbstractParticle) = length(particles.x)
+
 struct Particle{T} <: AbstractParticle
     x :: T
     y :: T
@@ -75,7 +78,7 @@ be a custom particle property.
 `dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
 `parameters` can be accessed inside the `dynamics` function.
 """
-function LagrangianParticles(particles::StructArray; restitution=1.0, tracked_fields::NamedTuple=NamedTuple(),
+function LagrangianParticles(particles; restitution=1.0, tracked_fields::NamedTuple=NamedTuple(),
                              dynamics=no_dynamics, parameters=nothing)
 
     for (field_name, tracked_field) in pairs(tracked_fields)
@@ -83,6 +86,13 @@ function LagrangianParticles(particles::StructArray; restitution=1.0, tracked_fi
             throw(ArgumentError("$field_name is a tracked field but $(eltype(particles)) has no $field_name field! " *
                                 "You might have to define your own particle type."))
     end
+
+    all(field ∈ propertynames(particles) for field in (:x, :y, :z)) ||
+        error("`x`, `y`, and `z` must be among properties of custom particles type (of type $(typeof(particles)))")
+
+    length(particles.x) == length(particles.y) == length(particles.z) || 
+        error("Particle properties `x`, `y`, and `z` must be the same length")
+
 
     return LagrangianParticles(particles, restitution, tracked_fields, dynamics, parameters)
 end
