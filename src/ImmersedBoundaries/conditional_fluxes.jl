@@ -168,8 +168,8 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 
             @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
                 @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...), 
-                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...), 
-                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
+                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...), 
+                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
         end
     end
 end
@@ -228,3 +228,18 @@ for bias in (:left_biased, :right_biased)
         end
     end
 end
+
+import Oceananaigans.Advection: _multi_dimensional_reconstruction_x, _multi_dimensional_reconstruction_y
+using Oceananaigans.Advection: multi_dimensional_reconstruction_x, multi_dimensional_reconstruction_y
+
+@inline _multi_dimensional_reconstruction_x(i, j, k, ibg::IBG, interpolate, args...) = 
+        ifelse(calc_inactive_stencil(4, :left, :x, :ᶜ, xside = :ᶜ), 
+               interpolate(i, j, k, ibg, args...), 
+               multi_dimensional_reconstruction_x(i, j, k, ibg, interpolate, args...))
+
+@inline _multi_dimensional_reconstruction_y(i, j, k, ibg::IBG, interpolate, args...) = 
+        ifelse(calc_inactive_stencil(4, :left, :y, :ᶜ, xside = :ᶜ), 
+                interpolate(i, j, k, ibg, args...), 
+                multi_dimensional_reconstruction_y(i, j, k, ibg, interpolate, args...))
+
+       

@@ -17,9 +17,9 @@ using Oceananigans
 using Oceananigans.Grids
 
 using Oceananigans.Coriolis:
-    HydrostaticSphericalCoriolis,
-    VectorInvariantEnergyConserving,
-    VectorInvariantEnstrophyConserving
+    HydrostaticSphericalCoriolis
+    
+using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
@@ -58,7 +58,7 @@ solid_body_geostrophic_height(φ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(φ)^
 function run_solid_body_rotation(; architecture = CPU(),
                                    Nx = 90,
                                    Ny = 30,
-                                   coriolis_scheme = VectorInvariantEnstrophyConserving(),
+                                   coriolis_scheme = EnstrophyConservingScheme(),
                                    advection_scheme = VectorInvariant(),
                                    super_rotations = 4,
                                    prefix = "vector_invariant")
@@ -67,11 +67,11 @@ function run_solid_body_rotation(; architecture = CPU(),
     grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 1),
                                  radius = 1,
                                  latitude = (-80, 80),
-                                 halo = (3, 3, 3),
+                                 halo = (4, 4, 4),
                                  longitude = (-180, 180),
                                  z = (-1, 0))
 
-    free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
+    free_surface = ImplicitFreeSurface(gravitational_acceleration = 1)
 
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1,
                                             scheme = coriolis_scheme)
@@ -89,7 +89,7 @@ function run_solid_body_rotation(; architecture = CPU(),
     Ω = model.coriolis.rotation_rate
 
     uᵢ(λ, φ, z) = solid_body_rotation(φ)
-    ηᵢ(λ, φ)    = solid_body_geostrophic_height(φ, R, Ω, g)
+    ηᵢ(λ, φ, z) = solid_body_geostrophic_height(φ, R, Ω, g)
 
     # Tracer patch for visualization
     Gaussian(λ, φ, L) = exp(-(λ^2 + φ^2) / 2L^2)
@@ -105,8 +105,7 @@ function run_solid_body_rotation(; architecture = CPU(),
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
     # Time-scale for gravity wave propagation across the smallest grid cell
-    wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλᶜᵃᵃ),
-                                      grid.radius * deg2rad(grid.Δφᵃᶜᵃ)) / gravity_wave_speed
+    wave_propagation_time_scale = grid.Δxᶜᶜᵃ[1] / gravity_wave_speed
 
     super_rotation_period = 2π * grid.radius / U
 
@@ -126,7 +125,6 @@ function run_solid_body_rotation(; architecture = CPU(),
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                           schedule = TimeInterval(super_rotation_period / 1000),
                                                           filename = output_prefix,
-                                                          field_slicer = nothing,
                                                           overwrite_existing = true)
 
     run!(simulation)
@@ -153,7 +151,7 @@ function plot_zonal_average_solid_body_rotation(filepath)
 
     super_rotation_period = 2π * grid.radius / U
 
-    φ = ynodes(Center, grid)
+    φ = ynodes(Face, grid)
 
     iter = Observable(0)
 
@@ -213,7 +211,7 @@ function analyze_solid_body_rotation(filepath)
     return iterations, maximum_error
 end
 
-filepath = run_solid_body_rotation(Nx=180, Ny=60, super_rotations=0.5, advection_scheme=VectorInvariant(), prefix = "2ndorder")
+filepath = run_solid_body_rotation(Nx=40, Ny=20, super_rotations=0.5, advection_scheme=VectorInvariant(), prefix = "2ndorder")
 plot_zonal_average_solid_body_rotation(filepath)
-filepath = run_solid_body_rotation(Nx=180, Ny=60, super_rotations=0.5, advection_scheme=WENO(zweno=true, vector_invariant=true), prefix = "weno")
+filepath = run_solid_body_rotation(Nx=40, Ny=20, super_rotations=0.5, advection_scheme=VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO()), prefix = "weno")
 plot_zonal_average_solid_body_rotation(filepath)

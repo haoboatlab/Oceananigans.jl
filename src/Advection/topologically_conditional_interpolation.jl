@@ -96,3 +96,15 @@ for bias in (:symmetric, :left_biased, :right_biased)
         end
     end
 end
+
+@inline _multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, interpolate, args...) = 
+        ifelse(i <= 2 || i >= grid.Nx - 3, 
+               interpolate(i, j, k, grid, args...), 
+               multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, interpolate, args...))
+
+@inline _multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, interpolate, args...) = 
+        ifelse(j <= 2 || j >= grid.Ny - 3, 
+                interpolate(i, j, k, grid, args...), 
+                multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, interpolate, args...))
+
+       
