@@ -27,7 +27,7 @@ function SplitExplicitAuxiliary(grid::MultiRegionGrid)
 end
 
 @inline function vertical_height!(height, location)
-    dz = GridMetricOperation(location, Δz, grid)
+    dz = GridMetricOperation(location, Δz, height.grid)
     sum!(height, dz)
 end
 
