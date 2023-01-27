@@ -181,9 +181,9 @@ end
 
 # may need to do Val(Nk) since it may not be known at compile. Also figure out where to put H
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
-    sefs = free_surface.state
+    sefs       = free_surface.state
     U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅
-    Hᶠᶜ, Hᶜᶠ = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
+    Hᶠᶜ, Hᶜᶠ   = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
     arch = architecture(grid)
 
     # take out "bad" barotropic mode, 
@@ -225,7 +225,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
                                                                 grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities, velocities_update)
 
     fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ))
-
+    fill_halo_regions!((free_surface.state.U, free_surface.state.V))
     # Solve for the free surface at tⁿ⁺¹
     @apply_regionally iterate_split_explicit!(free_surface, grid, Δt)
     
