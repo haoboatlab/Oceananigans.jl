@@ -31,7 +31,7 @@ end
 # use as a trait for dispatch purposes
 SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, substeps = 200) =
     SplitExplicitFreeSurface(nothing, nothing, nothing,
-                             gravitational_acceleration, SplitExplicitSettings(substeps))
+                             gravitational_acceleration, SplitExplicitSettings(; substeps))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -152,21 +152,17 @@ struct SplitExplicitSettings{𝒩, ℳ}
 end
 
 function SplitExplicitSettings(; substeps = 200, velocity_weights = nothing, free_surface_weights = nothing)
-    velocity_weights = Tuple(ones(substeps) ./ substeps)
-    free_surface_weights = Tuple(ones(substeps) ./ substeps)
+    
+    if isnothing(velocity_weights)
+        velocity_weights = Tuple(ones(Int(substeps)) ./ substeps)
+    end
+    if isnothing(free_surface_weights)
+        free_surface_weights = Tuple(ones(Int(substeps)) ./ substeps)
+    end
 
     return SplitExplicitSettings(substeps,
         velocity_weights,
         free_surface_weights)
-end
-
-function SplitExplicitSettings(substeps)
-    velocity_weights = Tuple(ones(substeps) ./ substeps)
-    free_surface_weights = Tuple(ones(substeps) ./ substeps)
-
-    return SplitExplicitSettings(substeps = substeps,
-        velocity_weights = velocity_weights,
-        free_surface_weights = free_surface_weights)
 end
 
 # Convenience Functions for grabbing free surface

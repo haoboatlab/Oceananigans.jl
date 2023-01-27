@@ -14,24 +14,89 @@ using Oceananigans.Operators
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
 
+"""
+These operators hardcode the boundary conditions in the difference, 
+for `Periodic` domains a periodic boundary condition is assumed, 
+for `Bounded` domains, a `FluxBoundaryCondition(0.0)` is assumed for
+the free surface and a `NoPenetration` boundary condition for velocity
+"""
+@inline ∂xᶠᶜᶠ_bound(i, j, k, grid, T, η) = δxᶠᵃᵃ_bound(i, j, k, grid, T, η) / Δxᶠᶜᶠ(i, j, k, grid)
+@inline ∂yᶜᶠᶠ_bound(i, j, k, grid, T, η) = δyᵃᶠᵃ_bound(i, j, k, grid, T, η) / Δyᶜᶠᶠ(i, j, k, grid)
+
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, η) = ifelse(i == 1, η[1, j, k] - η[grid.Nx, j, k], δxᶠᵃᵃ(i, j, k, grid, η))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Periodic}, η) = ifelse(j == 1, η[i, 1, k] - η[i, grid.Ny, k], δyᵃᶠᵃ(i, j, k, grid, η))
+
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  η) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, η))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Bounded},  η) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, η))
+
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, U) = ifelse(i == grid.Nx, U[1, j, k] - U[grid.Nx, j, k], δxᶜᵃᵃ(i, j, k, grid, U))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, V) = ifelse(j == grid.Ny, V[i, 1, k] - V[i, grid.Ny, k], δyᵃᶜᵃ(i, j, k, grid, V))
+
+# Enforce Impenetrability conditions
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  η) = ifelse(i == grid.Nx, - η[i, j, k],
+                                                          ifelse(i == 1, η[2, j, k], δxᶜᵃᵃ(i, j, k, grid, η)))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded},  η) = ifelse(j == grid.Ny, - η[i, j, k], 
+                                                          ifelse(j == 1, η[i, 2, k], δyᵃᶜᵃ(i, j, k, grid, η)))
+
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(i == grid.Nx, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(j == grid.Ny, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+
+# Enforce Impenetrability conditions
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(i == grid.Nx, - f(i, j, k, grid, args...),
+                                                                             ifelse(i == 1, f(2, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...)))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(j == grid.Ny, - f(i, j, k, grid, args...), 
+                                                                             ifelse(j == 1, f(i, 2, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...)))
+                                                          
+@inline div_xᶜᶜᶠ_bound(i, j, k, grid, TX, U) = 
+    1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_bound(i, j, k, grid, TX, Δy_qᶠᶜᶠ, U) 
+
+@inline div_yᶜᶜᶠ_bound(i, j, k, grid, TY, V) = 
+    1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_bound(i, j, k, grid, TY, Δx_qᶜᶠᶠ, V) 
+
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node, IBG, c, f
+
+@inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
+                                                                !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+
+@inline conditional_value_fcf(i, j, k, grid, ibg, U) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, f), zero(ibg), U[i, j, k])
+@inline conditional_value_cff(i, j, k, grid, ibg, V) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, f), zero(ibg), V[i, j, k])
+
+@inline conditional_∂x_bound_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, args...) where FT = ifelse(immersed_inactive_node(i, j, k, ibg, c, LY, LZ) | immersed_inactive_node(i+1, j, k, ibg, c, LY, LZ), zero(ibg), ∂x(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂y_bound_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂y, args...) where FT = ifelse(immersed_inactive_node(i, j, k, ibg, f, LY, LZ) | immersed_inactive_node(i, j+1, k, ibg, f, LY, LZ), zero(ibg), ∂y(i, j, k, ibg.underlying_grid, args...))
+
+for Topo in [:Periodic, :Bounded]
+    @eval begin
+        @inline δxᶜᵃᵃ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = δxᶜᵃᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_fcf, ibg, f, args...)
+        @inline δyᵃᶜᵃ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = δyᵃᶜᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_cff, ibg, f, args...)
+
+        @inline ∂xᶠᶜᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, η) = conditional_∂x_bound_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_bound, T, η)
+        @inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, η) = conditional_∂y_bound_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_bound, T, η)        
+    end
+end
+
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
+    TX, TY, _ = topology(grid)
+
     # ∂τ(U) = - ∇η + G
-    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ(i, j, k_top, grid, η) + Gᵁ[i, j, 1])
-    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ(i, j, k_top, grid, η) + Gⱽ[i, j, 1])
+    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ_bound(i, j, k_top, grid, TX, η) + Gᵁ[i, j, 1])
+    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_bound(i, j, k_top, grid, TY, η) + Gⱽ[i, j, 1])
 end
 
 @kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
+    TX, TY, _ = topology(grid)
+    
     # ∂τ(η) = - ∇⋅U
-    @inbounds η[i, j, k_top] -=  Δτ * div_xyᶜᶜᶠ(i, j, 1, grid, U, V)
+    @inbounds η[i, j, k_top] -=  Δτ * (div_xᶜᶜᶠ_bound(i, j, k_top, grid, TX, U) +
+                                       div_yᶜᶜᶠ_bound(i, j, k_top, grid, TY, V))
     # time-averaging
-    @inbounds U̅[i, j, 1]         +=  velocity_weight * U[i, j, 1]
-    @inbounds V̅[i, j, 1]         +=  velocity_weight * V[i, j, 1]
+    @inbounds U̅[i, j, 1]     +=  velocity_weight * U[i, j, 1]
+    @inbounds V̅[i, j, 1]     +=  velocity_weight * V[i, j, 1]
     @inbounds η̅[i, j, k_top] +=  free_surface_weight * η[i, j, k_top]
 end
 
@@ -43,17 +108,11 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     vel_weight = settings.velocity_weights[substep_index]
     η_weight   = settings.free_surface_weights[substep_index]
 
-    fill_halo_regions!(η)
-
     event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_1!, 
             grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
             dependencies=Event(device(arch)))
 
     wait(device(arch), event)
-
-    # U, V has been updated thus need to refill halo
-    fill_halo_regions!(U)
-    fill_halo_regions!(V)
 
     event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_2!, 
             grid, Δτ, η, U, V, η̅, U̅, V̅, vel_weight, η_weight,
@@ -152,7 +211,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     set_average_to_zero!(state)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    wait(device(arch), velocities_update)
+	wait(device(arch), MultiEvent(tuple(velocities_update[1]...)))
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
     wait(device(arch), MultiEvent(masking_events))
 
@@ -175,5 +234,5 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     fill_halo_regions!(η)
 
-    return NoneEvent()
+    return MultiEvent(tuple(velocities_update[2]...))
 end
