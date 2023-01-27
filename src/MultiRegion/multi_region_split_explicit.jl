@@ -12,15 +12,11 @@ function SplitExplicitAuxiliary(grid::MultiRegionGrid)
     Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
     Hᶜᶜ = Field{Center, Center, Nothing}(grid)
     
-    dz = GridMetricOperation((Face, Center, Center), Δz, grid)
-    @apply_regionally sum!(Hᶠᶜ, dz)
+    @apply_regionally vertical_height!(Hᶠᶜ, (Face, Center, Center))
+    @apply_regionally vertical_height!(Hᶜᶠ, (Center, Face, Center))
+
+    @apply_regionally vertical_height!(Hᶜᶜ, (Center, Center, Center))
        
-    dz = GridMetricOperation((Center, Face, Center), Δz, grid)
-    @apply_regionally sum!(Hᶜᶠ, dz)
-    
-    dz = GridMetricOperation((Center, Center, Center), Δz, grid)
-    @apply_regionally sum!(Hᶜᶜ, dz)
-    
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
         # In a non-parallel grid we calculate only the interior
@@ -28,6 +24,11 @@ function SplitExplicitAuxiliary(grid::MultiRegionGrid)
     @apply_regionally kernel_offsets = full_offsets(grid, grid.partition)
     
     return SplitExplicitAuxiliary(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+end
+
+@inline function vertical_height!(height, location)
+    dz = GridMetricOperation(location, Δz, grid)
+    sum!(height, dz)
 end
 
 @inline augmented_kernel_size(grid, ::XPartition) = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
