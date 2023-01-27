@@ -30,11 +30,11 @@ function SplitExplicitAuxiliary(grid::MultiRegionGrid)
     return SplitExplicitAuxiliary(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
-@inline augmented_kernel_size(grid, ::XPartition) = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
-@inline augmented_kernel_size(grid, ::YPartition) = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)
+@inline augmented_kernel_size(grid, ::XPartition) = (size(grid, 1) + 2halo_size(grid)[1], size(grid, 2))
+@inline augmented_kernel_size(grid, ::YPartition) = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2])
 
-@inline full_offsets(grid, ::XPartition) = (halo_size(grid)[1]-1, 0)
-@inline full_offsets(grid, ::YPartition) = (0, halo_size(grid)[2]-1)
+@inline full_offsets(grid, ::XPartition) = (halo_size(grid)[1], 0)
+@inline full_offsets(grid, ::YPartition) = (0, halo_size(grid)[2])
 
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrid)
 

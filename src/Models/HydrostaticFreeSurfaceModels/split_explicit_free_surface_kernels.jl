@@ -221,7 +221,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     velocities = model.velocities
 
-    @apply_regionally velocities_update = setup_split_explicit!(free_surface.auxiliary, free_surface.state, grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities, velocities_update)
+    @apply_regionally velocities_update = setup_split_explicit!(free_surface.auxiliary, free_surface.state, 
+                                                                grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities, velocities_update)
 
     fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ))
 
