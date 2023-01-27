@@ -69,6 +69,9 @@ using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node, 
 
 @inline conditional_value_fcf(i, j, k, grid, ibg, U) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, f), zero(ibg), U[i, j, k])
 @inline conditional_value_cff(i, j, k, grid, ibg, V) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, f), zero(ibg), V[i, j, k])
+                                                                
+@inline conditional_value_fcf(i, j, k, grid, ibg, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, f), zero(ibg), f(i, j, k, grid, args...))
+@inline conditional_value_cff(i, j, k, grid, ibg, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, f), zero(ibg), f(i, j, k, grid, args...))
 
 @inline conditional_∂x_bound_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, args...) where FT = ifelse(immersed_inactive_node(i, j, k, ibg, c, LY, LZ) | immersed_inactive_node(i+1, j, k, ibg, c, LY, LZ), zero(ibg), ∂x(i, j, k, ibg.underlying_grid, args...))
 @inline conditional_∂y_bound_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂y, args...) where FT = ifelse(immersed_inactive_node(i, j, k, ibg, f, LY, LZ) | immersed_inactive_node(i, j+1, k, ibg, f, LY, LZ), zero(ibg), ∂y(i, j, k, ibg.underlying_grid, args...))
