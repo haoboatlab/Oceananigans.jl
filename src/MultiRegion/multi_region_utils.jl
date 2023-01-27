@@ -1,4 +1,5 @@
 import Oceananigans.Fields: flatten_tuple
+using CUDA
 
 flatten_tuple(mro::MultiRegionObject) = flatten_tuple(mro.regions)
 
