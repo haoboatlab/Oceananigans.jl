@@ -107,8 +107,9 @@ function reconstruct_global_indices(indices, p::YPartition, N)
 end
 
 ## Functions applied regionally
-set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
-fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
+set!(mrf::MultiRegionField, v)            = apply_regionally!(set!,  mrf, v)
+set!(mrf::MultiRegionField, f::Function)  = apply_regionally!(set!,  mrf, f)
+fill!(mrf::MultiRegionField, v)           = apply_regionally!(fill!, mrf, v)
 
 compute_at!(mrf::GriddedMultiRegionField, time)  = apply_regionally!(compute_at!, mrf, time)
 compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!, mrf, time)

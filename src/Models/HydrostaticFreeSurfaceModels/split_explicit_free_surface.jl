@@ -43,19 +43,6 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
                                     free_surface.settings)
 end
 
-function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                        settings = SplitExplicitSettings(200))
-
-η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-
-    return SplitExplicitFreeSurface(η,
-                                    SplitExplicitState(grid),
-                                    SplitExplicitAuxiliary(grid),
-                                    gravitational_acceleration,
-                                    settings
-                                    )
-end
-
 """
     struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
 
@@ -63,7 +50,7 @@ A struct containing the state fields for the split-explicit free surface.
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
+struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
     "The instantaneous barotropic component of the zonal velocity. (`ReducedField`)"
     U :: ℱ𝒞
     "The instantaneous barotropic component of the meridional velocity. (`ReducedField`)"
@@ -91,7 +78,7 @@ function SplitExplicitState(grid::AbstractGrid)
     V = Field{Center, Face, Nothing}(grid)
     V̅ = Field{Center, Face, Nothing}(grid)
 
-    return SplitExplicitState(; U, V, η̅, U̅, V̅)
+    return SplitExplicitState(U, V, η̅, U̅, V̅)
 end
 
 """
@@ -101,7 +88,7 @@ A struct containing auxiliary fields for the split-explicit free surface.
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
+struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, K, O}
     "Vertically integrated slow barotropic forcing function for `U` (`ReducedField`)"
     Gᵁ :: ℱ𝒞
     "Vertically integrated slow barotropic forcing function for `V` (`ReducedField`)"
@@ -112,6 +99,10 @@ Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
     Hᶜᶠ :: 𝒞ℱ
     "Depth at `(Center, Center)` (`ReducedField`)"
     Hᶜᶜ :: 𝒞𝒞
+    "size of the substep kernel"
+    kernel_size :: K
+    "halo offsets for the substep kernel"
+    kernel_offsets :: O
 end
 
 function SplitExplicitAuxiliary(grid::AbstractGrid)
@@ -132,7 +123,11 @@ function SplitExplicitAuxiliary(grid::AbstractGrid)
     dz = GridMetricOperation((Center, Center, Center), Δz, grid)
     sum!(Hᶜᶜ, dz)
 
-    return SplitExplicitAuxiliary(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ)
+    # In a non-parallel grid we calculate only the interior
+    kernel_size    = :xy
+    kernel_offsets = (0, 0)
+
+    return SplitExplicitAuxiliary(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
 """

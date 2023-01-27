@@ -28,6 +28,9 @@ end
 Types = (:HydrostaticFreeSurfaceModel,
          :ImplicitFreeSurface,
          :ExplicitFreeSurface,
+         :SplitExplicitFreeSurface,
+         :SplitExplicitState,
+         :SplitExplicitAuxiliary,
          :QuasiAdamsBashforth2TimeStepper,
          :PrescribedVelocityFields)
 

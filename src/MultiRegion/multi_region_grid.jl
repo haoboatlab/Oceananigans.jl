@@ -16,6 +16,9 @@ struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid
     end
 end
 
+const XPartitionedGrid = MultiRegionGrid{<:Any, <:Any, <:Any, <:Any, <:XPartition}
+const YPartitionedGrid = MultiRegionGrid{<:Any, <:Any, <:Any, <:Any, <:YPartition}
+
 @inline isregional(mrg::MultiRegionGrid)        = true
 @inline getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
 @inline switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
