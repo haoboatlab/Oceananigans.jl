@@ -88,7 +88,7 @@ A struct containing auxiliary fields for the split-explicit free surface.
 
 $(TYPEDFIELDS)
 """
-struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, K, O}
+struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪}
     "Vertically integrated slow barotropic forcing function for `U` (`ReducedField`)"
     Gᵁ :: ℱ𝒞
     "Vertically integrated slow barotropic forcing function for `V` (`ReducedField`)"
@@ -100,9 +100,9 @@ struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, K, O}
     "Depth at `(Center, Center)` (`ReducedField`)"
     Hᶜᶜ :: 𝒞𝒞
     "size of the substep kernel"
-    kernel_size :: K
+    kernel_size :: 𝒦
     "halo offsets for the substep kernel"
-    kernel_offsets :: O
+    kernel_offsets :: 𝒪
 end
 
 function SplitExplicitAuxiliary(grid::AbstractGrid)
