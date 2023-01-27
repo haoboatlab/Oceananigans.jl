@@ -32,14 +32,14 @@ the free surface and a `NoPenetration` boundary condition for velocity
 @inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, U) = ifelse(i == grid.Nx, U[1, j, k] - U[grid.Nx, j, k], δxᶜᵃᵃ(i, j, k, grid, U))
 @inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, V) = ifelse(j == grid.Ny, V[i, 1, k] - V[i, grid.Ny, k], δyᵃᶜᵃ(i, j, k, grid, V))
 
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(i == grid.Nx, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(j == grid.Ny, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+
 # Enforce Impenetrability conditions
 @inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  η) = ifelse(i == grid.Nx, - η[i, j, k],
                                                           ifelse(i == 1, η[2, j, k], δxᶜᵃᵃ(i, j, k, grid, η)))
 @inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded},  η) = ifelse(j == grid.Ny, - η[i, j, k], 
                                                           ifelse(j == 1, η[i, 2, k], δyᵃᶜᵃ(i, j, k, grid, η)))
-
-@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(i == grid.Nx, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(j == grid.Ny, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
 # Enforce Impenetrability conditions
 @inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(i == grid.Nx, - f(i, j, k, grid, args...),
@@ -125,24 +125,28 @@ end
 # Barotropic Model Kernels
 # u_Δz = u * Δz
 
-@kernel function barotropic_mode_kernel!(U, V, u, v, grid)
-    i, j = @index(Global, NTuple)
+@kernel function barotropic_mode_kernel!(U, V, grid, u, v)
+    i, j  = @index(Global, NTuple)	
 
-    # hand unroll first loop 
-    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
-    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
+    # hand unroll first loop 	
+    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]	
+    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]	
 
-    @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
-        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
-    end
+    @unroll for k in 2:grid.Nz	
+        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]	
+        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]	
+    end	
 end
 
 # may need to do Val(Nk) since it may not be known at compile
 function barotropic_mode!(U, V, grid, u, v)
-    sum!(U, u * Δz)
-    sum!(V, v * Δz)
 
+    arch  = architecture(grid)
+    event = launch!(arch, grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v,
+                   dependencies=Event(device(arch)))
+
+    wait(device(arch), event)
+    
     fill_halo_regions!((U, V))
 end
 
