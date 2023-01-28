@@ -89,7 +89,7 @@ for Topo in [:Periodic, :Bounded]
     end
 end
 
-@kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, offsets)
+@kernel function split_explicit_barotropic_velocity_compute_kernel!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, offsets)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -103,7 +103,7 @@ end
     @inbounds V[i′, j′, 1] +=  Δτ * (-g * Hᶜᶠ[i′, j′] * ∂yᶜᶠᶠ_bound(i′, j′, k_top, grid, TY, η) + Gⱽ[i′, j′, 1])
 end
 
-@kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight, offsets)
+@kernel function split_explicit_free_surface_compute_kernel!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight, offsets)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
@@ -132,13 +132,13 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     kernel_size    = auxiliary.kernel_size
     kernel_offsets = auxiliary.kernel_offsets
 
-    event = launch!(arch, grid, kernel_size, split_explicit_free_surface_substep_kernel_1!, 
+    event = launch!(arch, grid, kernel_size, split_explicit_barotropic_velocity_compute_kernel!, 
             grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, kernel_offsets,
             dependencies=Event(device(arch)))
 
     wait(device(arch), event)
 
-    event = launch!(arch, grid, kernel_size, split_explicit_free_surface_substep_kernel_2!, 
+    event = launch!(arch, grid, kernel_size, split_explicit_free_surface_compute_kernel!, 
             grid, Δτ, η, U, V, η̅, U̅, V̅, vel_weight, η_weight, kernel_offsets,
             dependencies=Event(device(arch)))
 
