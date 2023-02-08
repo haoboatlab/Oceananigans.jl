@@ -197,10 +197,10 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             fill_event = $fill_all_send_buffers!(c, buffers, grid; dependencies = barrier)
 
-            recv_event1 = Event(recv_requests, 1, 
+            recv_event1 = Event(__MPIreq!, recv_requests, 1, 
                                 $recv_and_fill_side_halo!, c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers;
                                 dependencies = fill_event, progress = mpiyield)
-            recv_event2 = Event(recv_requests, 2,  
+            recv_event2 = Event(__MPIreq!, recv_requests, 2,  
                                 $recv_and_fill_opposite_side_halo!, c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers;
                                 dependencies = fill_event, progress = mpiyield)
             
@@ -209,10 +209,10 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             recv_event  = $fill_all_recv_buffers!(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
 
-            send_event1 = Event(send_requests, 1,
+            send_event1 = Event(__MPIreq!, send_requests, 1,
                                $send_side_halo, c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers;
                                dependencies = fill_event, progress = mpiyield)
-            send_event2 = Event(send_requests, 2,
+            send_event2 = Event(__MPIreq!, send_requests, 2,
                                $send_opposite_side_halo, c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers;
                                dependencies = fill_event, progress = mpiyield)
 
@@ -237,7 +237,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             
             fill_event = $fill_side_send_buffers!(c, buffers, grid; dependencies = event)
 
-            recv_event1 = Event(recv_request, 1, 
+            recv_event1 = Event(__MPIreq!, recv_request, 1, 
                                $recv_and_fill_side_halo!, c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers;
                                dependencies = fill_event, progress = mpiyield)
             test_event  = Event(__testall!, recv_request;
@@ -245,7 +245,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             recv_event  = $fill_side_recv_buffers!(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
 
-            send_event1 = Event(send_request, 1,
+            send_event1 = Event(__MPIreq!, send_request, 1,
                                $send_side_halo, c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers;
                                dependencies = fill_event, progress = mpiyield)
             send_event  = Event(__testall!, send_request;
@@ -269,7 +269,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             
             fill_event = $fill_opposite_side_send_buffers!(c, buffers, grid; dependencies = event)
 
-            recv_event1 = Event(recv_request, 1, 
+            recv_event1 = Event(__MPIreq!, recv_request, 1, 
                                $recv_and_fill_opposite_side_halo!, c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers;
                                dependencies = fill_event, progress = mpiyield)
             test_event  = Event(__testall!, recv_request;
@@ -277,7 +277,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             recv_event  = $fill_opposite_side_recv_buffers!(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
 
-            send_event1 = Event(send_request, 1,
+            send_event1 = Event(__MPIreq!, send_request, 1,
                                $send_opposite_side_halo, c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers;
                                dependencies = fill_event, progress = mpiyield)
             send_event  = Event(__testall!, send_request;
