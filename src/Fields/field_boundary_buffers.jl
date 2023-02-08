@@ -103,7 +103,7 @@ function fill_west_and_east_recv_buffers!(c::OffsetArray, buffers::FieldBoundary
     eventwest = fill_west_recv_buffer!(parent(c), buffers.west, grid; dependencies, progress)
     eventeast = fill_east_recv_buffer!(parent(c), buffers.east, grid; dependencies, progress)
 
-    return MultiEvent((eventeast, eventwest))
+    return MultiEvent((eventwest, eventeast))
 end
 
 function fill_south_and_north_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing, progress = nothing)

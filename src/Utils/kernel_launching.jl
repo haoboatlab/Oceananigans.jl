@@ -90,7 +90,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  reduced_dimensions = (),
                  location = nothing,
                  only_active_cells = false,
-                 PROGRESS = nothing,
+                 progress = nothing,
                  kwargs...)
 
     workgroup, worksize = work_layout(grid, workspec;
