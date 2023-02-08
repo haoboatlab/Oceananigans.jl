@@ -135,7 +135,7 @@ end
 
 # Implementing communication as explained in https://github.com/JuliaGPU/KernelAbstractions.jl/blob/master/examples/mpi.jl
 function mpiyield()
-    MPI.Iprobe(MPI.MPI_ANY_SOURCE, MPI.MPI_ANY_TAG, MPI.COMM_WORLD)
+    MPI.Iprobe(MPI.ANY_SOURCE, MPI.ANY_TAG, MPI.COMM_WORLD)
     yield()
 end
 
