@@ -90,6 +90,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  reduced_dimensions = (),
                  location = nothing,
                  only_active_cells = false,
+                 PROGRESS = nothing,
                  kwargs...)
 
     workgroup, worksize = work_layout(grid, workspec;
@@ -102,7 +103,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
 
     @debug "Launching kernel $kernel! with worksize $worksize"
 
-    event = loop!(kernel_args...; dependencies=dependencies)
+    event = loop!(kernel_args...; dependencies=dependencies, progress=progress)
 
     return event
 end

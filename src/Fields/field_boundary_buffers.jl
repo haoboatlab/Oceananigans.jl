@@ -98,55 +98,55 @@ fills OffsetArray `c` from `buffers.recv` after message passing occurred. If we 
 we do not need to fill the buffers as the transfer can happen through views
 """
 
-function fill_west_and_east_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing)
+function fill_west_and_east_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing, progress = nothing)
 
-    eventwest = fill_west_recv_buffer!(parent(c), buffers.west, grid; dependencies)
-    eventeast = fill_east_recv_buffer!(parent(c), buffers.east, grid; dependencies)
+    eventwest = fill_west_recv_buffer!(parent(c), buffers.west, grid; dependencies, progress)
+    eventeast = fill_east_recv_buffer!(parent(c), buffers.east, grid; dependencies, progress)
 
     return MultiEvent((eventeast, eventwest))
 end
 
-function fill_south_and_north_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing)
+function fill_south_and_north_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing, progress = nothing)
 
-    eventsouth = fill_south_recv_buffer!(parent(c), buffers.south, grid; dependencies)
-    eventnorth = fill_north_recv_buffer!(parent(c), buffers.north, grid; dependencies)
+    eventsouth = fill_south_recv_buffer!(parent(c), buffers.south, grid; dependencies, progress)
+    eventnorth = fill_north_recv_buffer!(parent(c), buffers.north, grid; dependencies, progress)
     
     return MultiEvent((eventsouth, eventnorth))
 end
 
-fill_west_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing) = 
-    fill_west_send_buffer!(parent(c), buffers.west, grid; dependencies)
+fill_west_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing, progress = nothing) = 
+    fill_west_send_buffer!(parent(c), buffers.west, grid; dependencies, progress)
 
-fill_east_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing) = 
-    fill_east_send_buffer!(parent(c), buffers.east, grid; dependencies)
+fill_east_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing, progress = nothing) = 
+    fill_east_send_buffer!(parent(c), buffers.east, grid; dependencies, progress)
 
-fill_south_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing) = 
-    fill_south_send_buffer!(parent(c), buffers.south, grid; dependencies)
+fill_south_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing, progress = nothing) = 
+    fill_south_send_buffer!(parent(c), buffers.south, grid; dependencies, progress)
 
-fill_north_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing) = 
-    fill_north_send_buffer!(parent(c), buffers.north, grid; dependencies)
+fill_north_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid; dependencies = nothing, progress = nothing) = 
+    fill_north_send_buffer!(parent(c), buffers.north, grid; dependencies, progress)
 
 # Actual send and recv kernels
 
- fill_west_send_buffer!(c, ::Nothing, args...; kwargs...) = NoneEvent()
- fill_east_send_buffer!(c, ::Nothing, args...; kwargs...) = NoneEvent()
-fill_north_send_buffer!(c, ::Nothing, args...; kwargs...) = NoneEvent()
-fill_south_send_buffer!(c, ::Nothing, args...; kwargs...) = NoneEvent()
+ fill_west_send_buffer!(c, ::Nothing, args...; kw...) = NoneEvent()
+ fill_east_send_buffer!(c, ::Nothing, args...; kw...) = NoneEvent()
+fill_north_send_buffer!(c, ::Nothing, args...; kw...) = NoneEvent()
+fill_south_send_buffer!(c, ::Nothing, args...; kw...) = NoneEvent()
 
- fill_west_send_buffer!(c, buff, grid; dependencies = nothing) = launch!(architecture(grid), grid, :yz,  _fill_west_send_buffer!, c, buff.send, halo_size(grid)[1], size(grid)[1]; dependencies)
- fill_east_send_buffer!(c, buff, grid; dependencies = nothing) = launch!(architecture(grid), grid, :yz,  _fill_east_send_buffer!, c, buff.send, halo_size(grid)[1], size(grid)[1]; dependencies)
-fill_north_send_buffer!(c, buff, grid; dependencies = nothing) = launch!(architecture(grid), grid, :xz, _fill_north_send_buffer!, c, buff.send, halo_size(grid)[2], size(grid)[2]; dependencies)
-fill_south_send_buffer!(c, buff, grid; dependencies = nothing) = launch!(architecture(grid), grid, :xz, _fill_south_send_buffer!, c, buff.send, halo_size(grid)[2], size(grid)[2]; dependencies)
+ fill_west_send_buffer!(c, buff, grid; kw...) = launch!(architecture(grid), grid, :yz,  _fill_west_send_buffer!, c, buff.send, halo_size(grid)[1], size(grid)[1]; kw...)
+ fill_east_send_buffer!(c, buff, grid; kw...) = launch!(architecture(grid), grid, :yz,  _fill_east_send_buffer!, c, buff.send, halo_size(grid)[1], size(grid)[1]; kw...)
+fill_north_send_buffer!(c, buff, grid; kw...) = launch!(architecture(grid), grid, :xz, _fill_north_send_buffer!, c, buff.send, halo_size(grid)[2], size(grid)[2]; kw...)
+fill_south_send_buffer!(c, buff, grid; kw...) = launch!(architecture(grid), grid, :xz, _fill_south_send_buffer!, c, buff.send, halo_size(grid)[2], size(grid)[2]; kw...)
 
- fill_west_recv_buffer!(c, ::Nothing, args...; kwargs...) = NoneEvent()
- fill_east_recv_buffer!(c, ::Nothing, args...; kwargs...) = NoneEvent()
-fill_north_recv_buffer!(c, ::Nothing, args...; kwargs...) = NoneEvent()
-fill_south_recv_buffer!(c, ::Nothing, args...; kwargs...) = NoneEvent()
+ fill_west_recv_buffer!(c, ::Nothing, args...; kw...) = NoneEvent()
+ fill_east_recv_buffer!(c, ::Nothing, args...; kw...) = NoneEvent()
+fill_north_recv_buffer!(c, ::Nothing, args...; kw...) = NoneEvent()
+fill_south_recv_buffer!(c, ::Nothing, args...; kw...) = NoneEvent()
 
- fill_west_recv_buffer!(c, buff, grid; dependencies = nothing) = launch!(architecture(grid), grid, :yz,  _fill_west_recv_buffer!, c, buff.recv, halo_size(grid)[1], size(grid)[1]; dependencies)
- fill_east_recv_buffer!(c, buff, grid; dependencies = nothing) = launch!(architecture(grid), grid, :yz,  _fill_east_recv_buffer!, c, buff.recv, halo_size(grid)[1], size(grid)[1]; dependencies)
-fill_north_recv_buffer!(c, buff, grid; dependencies = nothing) = launch!(architecture(grid), grid, :xz, _fill_north_recv_buffer!, c, buff.recv, halo_size(grid)[2], size(grid)[2]; dependencies)
-fill_south_recv_buffer!(c, buff, grid; dependencies = nothing) = launch!(architecture(grid), grid, :xz, _fill_south_recv_buffer!, c, buff.recv, halo_size(grid)[2], size(grid)[2]; dependencies)
+ fill_west_recv_buffer!(c, buff, grid; kw...) = launch!(architecture(grid), grid, :yz,  _fill_west_recv_buffer!, c, buff.recv, halo_size(grid)[1], size(grid)[1]; kw...)
+ fill_east_recv_buffer!(c, buff, grid; kw...) = launch!(architecture(grid), grid, :yz,  _fill_east_recv_buffer!, c, buff.recv, halo_size(grid)[1], size(grid)[1]; kw...)
+fill_north_recv_buffer!(c, buff, grid; kw...) = launch!(architecture(grid), grid, :xz, _fill_north_recv_buffer!, c, buff.recv, halo_size(grid)[2], size(grid)[2]; kw...)
+fill_south_recv_buffer!(c, buff, grid; kw...) = launch!(architecture(grid), grid, :xz, _fill_south_recv_buffer!, c, buff.recv, halo_size(grid)[2], size(grid)[2]; kw...)
 
 @kernel function _fill_west_send_buffer!(c, buff, H, N)
     j, k = @index(Global, NTuple)
