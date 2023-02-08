@@ -2,11 +2,16 @@ using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 using Oceananigans.Fields: fill_west_and_east_send_buffers!, 
                            fill_south_and_north_send_buffers!, 
-                           fill_west_send_buffers!,
-                           fill_east_send_buffers!,
+                            fill_west_send_buffers!,
+                            fill_east_send_buffers!,
                            fill_south_send_buffers!,
                            fill_north_send_buffers!,
-                           fill_recv_buffers!, 
+                           fill_west_and_east_recv_buffers!, 
+                           fill_south_and_north_recv_buffers!, 
+                            fill_west_recv_buffers!,
+                            fill_east_recv_buffers!,
+                           fill_south_recv_buffers!,
+                           fill_north_recv_buffers!,
                            reduced_dimensions, 
                            instantiated_location
 
@@ -202,7 +207,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             test_event  = Event(__testall!, recv_requests;
                                 dependencies = MultiEvent((recv_event1, recv_event2)), progress = mpiyield) 
 
-            recv_event  = $fill_all_recv_buffers(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
+            recv_event  = $fill_all_recv_buffers!(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
 
             send_event1 = Event(send_requests, 1,
                                $send_side_halo, c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers;
@@ -214,7 +219,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             send_event  = Event(__testall!, send_requests;
                                dependencies = MultiEvent((send_event1, send_event2)), progress = mpiyield) 
 
-            return (recv_event, send_event)
+            return MultiEvent(recv_event, send_event)
         end
 
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::DistributedArch, 
@@ -238,7 +243,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             test_event  = Event(__testall!, recv_request;
                                dependencies = recv_event1, progress = mpiyield) 
 
-            recv_event  = $fill_side_recv_buffers(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
+            recv_event  = $fill_side_recv_buffers!(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
 
             send_event1 = Event(send_request, 1,
                                $send_side_halo, c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers;
@@ -246,7 +251,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             send_event  = Event(__testall!, send_request;
                                dependencies = send_event1, progress = mpiyield) 
             
-            return (recv_event, send_event)
+            return MultiEvent(recv_event, send_event)
         end
 
         function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
@@ -270,7 +275,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             test_event  = Event(__testall!, recv_request;
                                dependencies = recv_event1, progress = mpiyield) 
 
-            recv_event  = $fill_opposite_side_recv_buffers(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
+            recv_event  = $fill_opposite_side_recv_buffers!(c, buffers, grid; dependencies = test_event, progress = mpiyield) 
 
             send_event1 = Event(send_request, 1,
                                $send_opposite_side_halo, c, grid, arch, loc[$dir], local_rank, bc_opposie_side.condition.to, buffers;
@@ -278,7 +283,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             send_event  = Event(__testall!, send_request;
                                dependencies = send_event1, progress = mpiyield) 
             
-            return (recv_event, send_event)
+            return MultiEvent(recv_event, send_event)
         end
     end
 end
