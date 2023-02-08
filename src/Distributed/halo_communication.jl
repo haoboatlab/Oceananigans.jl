@@ -146,7 +146,7 @@ end
 function __testall!(requests; dependencies=nothing)
     done = false
     while !done
-        done, _ = MPI.Testall!(requests)
+        done = MPI.Testall(requests)
         yield()
     end
 end
