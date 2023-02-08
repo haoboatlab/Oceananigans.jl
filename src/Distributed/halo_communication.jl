@@ -1,5 +1,6 @@
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
+using Oceananigans.Fields: flatten_tuple
 using Oceananigans.Fields: fill_west_and_east_send_buffers!, 
                            fill_south_and_north_send_buffers!, 
                             fill_west_send_buffers!,
@@ -109,7 +110,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         push!(halo_events, halo_event)
     end
 
-    wait(MultiEvent(tuple(halo_events...)))
+    wait(MultiEvent(flatten_tuple(tuple(halo_events...))))
     return nothing
 end
 
@@ -219,7 +220,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             send_event  = Event(__testall!, send_requests;
                                dependencies = MultiEvent((send_event1, send_event2)), progress = mpiyield) 
 
-            return MultiEvent(recv_event, send_event)
+            return (recv_event, send_event)
         end
 
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::DistributedArch, 
@@ -249,7 +250,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             send_event  = Event(__testall!, send_request;
                                dependencies = send_event1, progress = mpiyield) 
             
-            return MultiEvent(recv_event, send_event)
+            return (recv_event, send_event)
         end
 
         function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
@@ -279,7 +280,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             send_event  = Event(__testall!, send_request;
                                dependencies = send_event1, progress = mpiyield) 
             
-            return MultiEvent(recv_event, send_event)
+            return (recv_event, send_event)
         end
     end
 end
