@@ -122,6 +122,7 @@ include("turbulence_closure_implementations/mews_vertical_diffusivity.jl")
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
+include("turbulence_closure_implementations/mesoscale_backscatter_antidiffusivity.jl")
 
 using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 

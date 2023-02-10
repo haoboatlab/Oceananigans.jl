@@ -103,13 +103,15 @@ end
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS
+using Oceananigans.TurbulenceClosures: MBAD, hydrostatic_subgrid_kinetic_energy_tendency
 
 const HFSM = HydrostaticFreeSurfaceModel
 
 # Fallback
-@inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                  = hydrostatic_free_surface_tracer_tendency, c, K
+@inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = hydrostatic_free_surface_tracer_tendency, c, K
 @inline tracer_tendency_kernel_function(model::HFSM, ::Val{:K}, c::MEWS,          K) = hydrostatic_turbulent_kinetic_energy_tendency, c, K
 @inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = hydrostatic_turbulent_kinetic_energy_tendency, c, K
+@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:E}, c::MBAD, K)          = hydrostatic_subgrid_kinetic_energy_tendency, c, K
 
 function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, diffusivity_fields::Tuple)
     catke_index = findfirst(c -> c isa FlavorOfCATKE, closures)
@@ -120,6 +122,18 @@ function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple
         catke_closure = closures[catke_index]
         catke_diffusivity_fields = diffusivity_fields[catke_index]
         return hydrostatic_turbulent_kinetic_energy_tendency, catke_closure, catke_diffusivity_fields 
+    end
+end
+
+function tracer_tendency_kernel_function(model::HFSM, ::Val{:E}, closures::Tuple, diffusivity_fields::Tuple)
+    mbad_index = findfirst(c -> c isa MBAD, closures)
+
+    if isnothing(mbad_index)
+        return hydrostatic_free_surface_tracer_tendency, closures, diffusivity_fields
+    else
+        mbad_closure = closures[mbad_index]
+        mbad_diffusivity_fields = diffusivity_fields[mbad_index]
+        return  hydrostatic_turbulent_kinetic_energy_tendency, mbad_closure, mbad_diffusivity_fields 
     end
 end
 

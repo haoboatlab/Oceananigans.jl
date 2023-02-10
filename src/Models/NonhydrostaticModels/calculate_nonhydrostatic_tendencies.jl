@@ -98,13 +98,15 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
     start_tracer_kernel_args = (advection, closure)
     end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
     
-    for tracer_index in 1:length(tracers)
+    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
 
-        Gc_event = launch!(arch, grid, :xyz, calculate_Gc!,
-                           c_tendency, grid, Val(tracer_index),
+        c_kernel_function = tracer_tendency_kernel_function(Val(tracer_name), model.closure)
+
+        Gc_event = launch!(arch, grid, :xyz, calculate_Gc!, 
+                           c_tendency, c_kernel_function, grid, Val(tracer_index),
                            start_tracer_kernel_args..., 
                            c_immersed_bc,
                            end_tracer_kernel_args...,
@@ -117,6 +119,18 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
     wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
+end
+
+using Oceananigans.TurbulenceClosures: MBAD, hydrostatic_subgrid_kinetic_energy_tendency
+
+tracer_tendency_kernel_function(args...) = tendency_kernel
+
+function tracer_tendency_kernel_function(::Val{:E}, closures)
+    cl = findfirst(x -> x isa MBAD, closures)
+    if isnothing(cl) 
+        return tendency_kernel
+    end
+    return hydrostatic_subgrid_kinetic_energy_tendency
 end
 
 #####
@@ -164,15 +178,15 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_Gc!(Gc, args...)
+@kernel function calculate_Gc!(Gc, tendency_kernel, args...)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
+    @inbounds Gc[i, j, k] = tendency_kernel(i, j, k, args...)
 end
 
-@kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gc!(Gc, tendency_kernel, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
+    @inbounds Gc[i, j, k] = tendency_kernel(i, j, k, grid, args...)
 end
 
 #####
