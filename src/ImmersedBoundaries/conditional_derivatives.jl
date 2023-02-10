@@ -8,12 +8,19 @@ import Oceananigans.Operators:
 
 # Defining all the First order derivatives for the immersed boundaries
 
-@inline conditional_∂x_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, LY, LZ) | inactive_node(i-1, j, k, ibg, c, LY, LZ), zero(FT), ∂x(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂x_c(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, args...) where FT = ifelse(inactive_node(i, j, k, ibg, f, LY, LZ) | inactive_node(i+1, j, k, ibg, f, LY, LZ), zero(FT), ∂x(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂y_f(LX, LZ, i, j, k, ibg::IBG{FT}, ∂y, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, c, LZ) | inactive_node(i, j-1, k, ibg, LX, c, LZ), zero(FT), ∂y(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂y_c(LX, LZ, i, j, k, ibg::IBG{FT}, ∂y, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, f, LZ) | inactive_node(i, j+1, k, ibg, LX, f, LZ), zero(FT), ∂y(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂z_f(LX, LY, i, j, k, ibg::IBG{FT}, ∂z, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, LY, c) | inactive_node(i, j, k-1, ibg, LX, LY, c), zero(FT), ∂z(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂z_c(LX, LY, i, j, k, ibg::IBG{FT}, ∂z, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, LY, f) | inactive_node(i, j, k+1, ibg, LX, LY, f), zero(FT), ∂z(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂x_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, f::Function, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, LY, LZ) | inactive_node(i-1, j, k, ibg, c, LY, LZ), zero(FT), ∂x(i, j, k, ibg.underlying_grid, f, args...))
+@inline conditional_∂x_c(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, f::Function, args...) where FT = ifelse(inactive_node(i, j, k, ibg, f, LY, LZ) | inactive_node(i+1, j, k, ibg, f, LY, LZ), zero(FT), ∂x(i, j, k, ibg.underlying_grid, f, args...))
+@inline conditional_∂y_f(LX, LZ, i, j, k, ibg::IBG{FT}, ∂y, f::Function, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, c, LZ) | inactive_node(i, j-1, k, ibg, LX, c, LZ), zero(FT), ∂y(i, j, k, ibg.underlying_grid, f, args...))
+@inline conditional_∂y_c(LX, LZ, i, j, k, ibg::IBG{FT}, ∂y, f::Function, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, f, LZ) | inactive_node(i, j+1, k, ibg, LX, f, LZ), zero(FT), ∂y(i, j, k, ibg.underlying_grid, f, args...))
+@inline conditional_∂z_f(LX, LY, i, j, k, ibg::IBG{FT}, ∂z, f::Function, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, LY, c) | inactive_node(i, j, k-1, ibg, LX, LY, c), zero(FT), ∂z(i, j, k, ibg.underlying_grid, f, args...))
+@inline conditional_∂z_c(LX, LY, i, j, k, ibg::IBG{FT}, ∂z, f::Function, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, LY, f) | inactive_node(i, j, k+1, ibg, LX, LY, f), zero(FT), ∂z(i, j, k, ibg.underlying_grid, f, args...))
+
+@inline conditional_∂x_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, c) where FT = ifelse(inactive_node(i, j, k, ibg, c, LY, LZ) | inactive_node(i-1, j, k, ibg, c, LY, LZ), zero(FT), ∂x(i, j, k, ibg.underlying_grid, c))
+@inline conditional_∂x_c(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, c) where FT = ifelse(inactive_node(i, j, k, ibg, f, LY, LZ) | inactive_node(i+1, j, k, ibg, f, LY, LZ), zero(FT), ∂x(i, j, k, ibg.underlying_grid, c))
+@inline conditional_∂y_f(LX, LZ, i, j, k, ibg::IBG{FT}, ∂y, c) where FT = ifelse(inactive_node(i, j, k, ibg, LX, c, LZ) | inactive_node(i, j-1, k, ibg, LX, c, LZ), zero(FT), ∂y(i, j, k, ibg.underlying_grid, c))
+@inline conditional_∂y_c(LX, LZ, i, j, k, ibg::IBG{FT}, ∂y, c) where FT = ifelse(inactive_node(i, j, k, ibg, LX, f, LZ) | inactive_node(i, j+1, k, ibg, LX, f, LZ), zero(FT), ∂y(i, j, k, ibg.underlying_grid, c))
+@inline conditional_∂z_f(LX, LY, i, j, k, ibg::IBG{FT}, ∂z, c) where FT = ifelse(inactive_node(i, j, k, ibg, LX, LY, c) | inactive_node(i, j, k-1, ibg, LX, LY, c), zero(FT), ∂z(i, j, k, ibg.underlying_grid, c))
+@inline conditional_∂z_c(LX, LY, i, j, k, ibg::IBG{FT}, ∂z, c) where FT = ifelse(inactive_node(i, j, k, ibg, LX, LY, f) | inactive_node(i, j, k+1, ibg, LX, LY, f), zero(FT), ∂z(i, j, k, ibg.underlying_grid, c))
 
 @inline translate_loc(a) = a == :ᶠ ? :f : :c
 
